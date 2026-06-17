@@ -235,7 +235,10 @@ Sourcing and people-finding are agentic loops, so they need explicit caps:
 
 ## Open Questions / Future Work (not blocking v1)
 
-- Whether to integrate BigSet directly as a sourcing connector vs. keeping
-  the in-house connector implementation.
+- Both BigSet and the in-house connector implementation will be used as
+  parallel `SourceConnector`s — BigSet is wired in as an additional connector
+  alongside the in-house scrapers, and the existing dedup layer (companies
+  unique on normalized name, jobs unique on URL) automatically collapses any
+  overlapping results. No special merge logic is needed.
 - Which paid people-search API (if any) to integrate first.
 - Web dashboard, scheduled runs, and auto-apply are deferred to future specs.
