@@ -1,5 +1,6 @@
 # job_agent/stages/report.py
 import csv
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from job_agent.store import Store
@@ -10,7 +11,19 @@ def run_report(store: Store, output_dir: str = "reports") -> dict[str, str]:
     report_dir = Path(output_dir) / ts
     report_dir.mkdir(parents=True, exist_ok=True)
 
+    resumes_dir = report_dir / "resumes"
+    resumes_dir.mkdir(exist_ok=True)
+
     rows = store.get_all_for_report()
+
+    # Write per-company tailored resume files; attach relative path back to each row
+    for row in rows:
+        if row.get("resume_tailored_text"):
+            slug = _slugify(row.get("company_name", "unknown"))
+            resume_path = resumes_dir / f"{slug}.md"
+            resume_path.write_text(row["resume_tailored_text"], encoding="utf-8")
+            row["resume_file"] = str(resume_path.relative_to(report_dir))
+
     md_path = report_dir / "report.md"
     csv_path = report_dir / "matches.csv"
 
@@ -51,6 +64,8 @@ def _write_markdown(rows: list[dict], path: Path) -> None:
         if row.get("message_text"):
             quoted = row["message_text"].replace("\n", "\n> ")
             lines += ["**Drafted message:**", "", f"> {quoted}", ""]
+        if row.get("resume_file"):
+            lines += [f"**Tailored resume:** [{row['resume_file']}]({row['resume_file']})", ""]
         lines += ["---", ""]
 
     path.write_text("\n".join(lines), encoding="utf-8")
@@ -60,9 +75,17 @@ def _write_csv(rows: list[dict], path: Path) -> None:
     fields = [
         "company_name", "role_variant_name", "score", "job_title", "job_url",
         "funding_stage", "funding_date", "contact_name", "contact_title",
-        "contact_email", "status",
+        "contact_email", "status", "resume_file",
     ]
     with open(path, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fields, extrasaction="ignore")
         writer.writeheader()
         writer.writerows(rows)
+
+
+def _slugify(text: str) -> str:
+    """Convert company name to a safe filename slug."""
+    text = text.lower().strip()
+    text = re.sub(r"[^\w\s-]", "", text)
+    text = re.sub(r"[\s_]+", "-", text)
+    return text[:60]

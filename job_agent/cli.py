@@ -25,6 +25,7 @@ from job_agent.stages.matching import run_matching
 from job_agent.stages.outreach import run_outreach
 from job_agent.stages.people_finding import run_people_finding
 from job_agent.stages.report import run_report
+from job_agent.stages.resume_tailoring import run_resume_tailoring
 from job_agent.stages.sourcing import run_sourcing
 
 app = typer.Typer(help="Job-Finding Agent: source startups → match → outreach")
@@ -94,6 +95,13 @@ def run(
             resume_text=resume_text, llm=llm, store=store, config=cfg.matching,
         )
         typer.echo(f"  → {c['scored']} scored, {c['errors']} errors")
+
+        typer.echo(f"[tailor] {rv_cfg.name} …")
+        c = run_resume_tailoring(
+            llm=llm, store=store, role_variant=rv_cfg,
+            role_variant_id=rv_id, resume_text=resume_text, config=cfg.matching,
+        )
+        typer.echo(f"  → {c['tailored']} tailored, {c['errors']} errors")
 
     typer.echo("[people-find] …")
     apollo_key: Optional[str] = os.environ.get("APOLLO_API_KEY")

@@ -122,6 +122,44 @@ def people_verify_prompt(
     return system, user
 
 
+def resume_tailor_prompt(
+    resume_text: str,
+    role_variant_keywords: list[str],
+    role_variant_seniority: str,
+    company_name: str,
+    job_title: str | None,
+    job_description: str | None,
+    funding_signal: str | None,
+) -> tuple[str, str]:
+    context = ""
+    if job_title and job_description:
+        context = f"Job title: {job_title}\n\nJob description:\n{job_description[:2000]}"
+    elif job_title:
+        context = f"Job title: {job_title}"
+    elif funding_signal:
+        context = f"Company signal (no JD available): {funding_signal[:500]}"
+    else:
+        context = "No JD available — tailor for a general role matching the keywords."
+
+    keywords = ", ".join(role_variant_keywords)
+    system = (
+        "You are an expert resume editor. Given a candidate's resume and a specific job "
+        "opportunity, you produce a tailored resume that maximises fit. "
+        "Return ONLY valid markdown with exactly two sections: "
+        "'## Key Changes' (bullet list of what you changed and why) and "
+        "'## Tailored Resume' (the full tailored resume text, ready to copy-paste). "
+        "Never invent experience the candidate does not have."
+    )
+    user = (
+        f"Tailor this resume for a role at {company_name}.\n\n"
+        f"Target profile: {role_variant_seniority} with skills in {keywords}.\n\n"
+        f"=== OPPORTUNITY ===\n{context}\n\n"
+        f"=== RESUME ===\n{resume_text[:4000]}\n\n"
+        "Return the two-section markdown now."
+    )
+    return system, user
+
+
 def draft_message_prompt(
     company_name: str,
     job_title: str | None,

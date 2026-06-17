@@ -104,3 +104,14 @@ class OutreachDraft:
     id: Optional[int] = None
     contact_id: Optional[int] = None
     generated_at: str = field(default_factory=_now)
+
+
+@dataclass
+class ResumeDraft:
+    match_id: int
+    role_variant_id: int
+    company_name: str
+    job_title: Optional[str]
+    tailored_text: str   # full markdown: ## Key Changes + ## Tailored Resume
+    id: Optional[int] = None
+    generated_at: str = field(default_factory=_now)

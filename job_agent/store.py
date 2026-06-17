@@ -5,7 +5,7 @@ from typing import Generator, Optional
 
 from job_agent.models import (
     Company, Confidence, Contact, DraftType, Job, Match, MatchStatus,
-    OutreachDraft, RoleVariant,
+    OutreachDraft, ResumeDraft, RoleVariant,
 )
 
 _SCHEMA = """
@@ -64,6 +64,16 @@ CREATE TABLE IF NOT EXISTS outreach_drafts (
     message_text TEXT NOT NULL,
     draft_type TEXT NOT NULL,
     generated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS resume_drafts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    match_id INTEGER NOT NULL REFERENCES matches(id),
+    role_variant_id INTEGER NOT NULL REFERENCES role_variants(id),
+    company_name TEXT NOT NULL,
+    job_title TEXT,
+    tailored_text TEXT NOT NULL,
+    generated_at TEXT NOT NULL,
+    UNIQUE (match_id)
 );
 """
 
@@ -238,6 +248,33 @@ class Store:
             ).fetchone()
             return _to_contact(row) if row else None
 
+    def insert_resume_draft(self, draft: ResumeDraft) -> Optional[int]:
+        with self._conn() as conn:
+            try:
+                cursor = conn.execute(
+                    """INSERT INTO resume_drafts
+                       (match_id, role_variant_id, company_name, job_title, tailored_text, generated_at)
+                       VALUES (?,?,?,?,?,?)""",
+                    (draft.match_id, draft.role_variant_id, draft.company_name,
+                     draft.job_title, draft.tailored_text, draft.generated_at),
+                )
+                return cursor.lastrowid
+            except sqlite3.IntegrityError:
+                return None  # already drafted for this match
+
+    def get_matches_needing_resume_draft(self, threshold: int) -> list[Match]:
+        """Matches above threshold that don't yet have a resume_draft."""
+        with self._conn() as conn:
+            rows = conn.execute(
+                """SELECT m.* FROM matches m
+                   WHERE m.score >= ? AND m.status = 'new'
+                     AND NOT EXISTS (
+                       SELECT 1 FROM resume_drafts rd WHERE rd.match_id = m.id
+                     )""",
+                (threshold,),
+            ).fetchall()
+            return [_to_match(r) for r in rows]
+
     def get_all_for_report(self) -> list[dict]:
         with self._conn() as conn:
             rows = conn.execute("""
@@ -248,13 +285,15 @@ class Store:
                     rv.name AS role_variant_name,
                     ct.name AS contact_name, ct.title AS contact_title,
                     ct.email AS contact_email, ct.profile_url AS contact_profile_url,
-                    od.message_text, od.draft_type
+                    od.message_text, od.draft_type,
+                    rd.tailored_text AS resume_tailored_text
                 FROM matches m
                 JOIN companies c ON c.id = m.company_id
                 JOIN role_variants rv ON rv.id = m.role_variant_id
                 LEFT JOIN jobs j ON j.id = m.job_id
                 LEFT JOIN contacts ct ON ct.company_id = m.company_id
                 LEFT JOIN outreach_drafts od ON od.match_id = m.id
+                LEFT JOIN resume_drafts rd ON rd.match_id = m.id
                 ORDER BY m.score DESC
             """).fetchall()
             return [dict(r) for r in rows]
