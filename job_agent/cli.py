@@ -1,0 +1,110 @@
+# job_agent/cli.py
+import logging
+import os
+from pathlib import Path
+from typing import Optional
+import typer
+
+from job_agent.config import load_config
+from job_agent.llm.client import LLMClient
+from job_agent.models import RoleVariant
+from job_agent.resume import parse_resume, make_resume_summary
+from job_agent.store import Store
+from job_agent.connectors.bigset import BigSetConnector
+from job_agent.connectors.web_search import WebSearchConnector
+from job_agent.stages.matching import run_matching
+from job_agent.stages.outreach import run_outreach
+from job_agent.stages.people_finding import run_people_finding
+from job_agent.stages.report import run_report
+from job_agent.stages.sourcing import run_sourcing
+
+app = typer.Typer(help="Job-Finding Agent: source startups → match → outreach")
+logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
+
+
+def _build(config_path: str):
+    cfg = load_config(config_path)
+
+    api_key = os.environ.get("OPENROUTER_API_KEY", "")
+    if not api_key:
+        typer.echo("Error: OPENROUTER_API_KEY not set", err=True)
+        raise typer.Exit(1)
+
+    store = Store()
+    llm = LLMClient(api_key=api_key, model=cfg.llm.model)
+
+    connectors = []
+    serper_key = os.environ.get("SERPER_API_KEY", "")
+    if serper_key:
+        connectors.append(WebSearchConnector(api_key=serper_key, connector_type="funding_news"))
+        connectors.append(WebSearchConnector(api_key=serper_key, connector_type="job_board"))
+    else:
+        typer.echo("Warning: SERPER_API_KEY not set — web search disabled", err=True)
+
+    bigset_path = os.environ.get("BIGSET_EXPORT_PATH", "")
+    if bigset_path and Path(bigset_path).exists():
+        connectors.append(BigSetConnector(csv_path=bigset_path))
+
+    if not connectors:
+        typer.echo("Warning: no connectors active", err=True)
+
+    return cfg, store, llm, connectors
+
+
+@app.command()
+def run(
+    config: str = typer.Option("config.yaml", help="Path to config.yaml"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Dry run (no live API calls)"),
+) -> None:
+    """Run all pipeline stages: source → match → people-find → outreach → report."""
+    cfg, store, llm, connectors = _build(config)
+
+    resume_texts: dict[str, str] = {}
+
+    for rv_cfg in cfg.role_variants:
+        rv = RoleVariant(
+            name=rv_cfg.name,
+            resume_path=rv_cfg.resume,
+            keywords=rv_cfg.keywords,
+            seniority=rv_cfg.seniority,
+        )
+        rv_id = store.upsert_role_variant(rv)
+        resume_text = parse_resume(rv_cfg.resume)
+        resume_texts[rv_cfg.name] = resume_text
+
+        typer.echo(f"[source] {rv_cfg.name} …")
+        c = run_sourcing(
+            role_variant=rv_cfg, role_variant_id=rv_id,
+            connectors=connectors, llm=llm, store=store, config=cfg.sourcing,
+        )
+        typer.echo(f"  → {c['companies']} companies, {c['jobs']} jobs, {c['errors']} errors")
+
+        typer.echo(f"[match]  {rv_cfg.name} …")
+        c = run_matching(
+            role_variant=rv_cfg, role_variant_id=rv_id,
+            resume_text=resume_text, llm=llm, store=store, config=cfg.matching,
+        )
+        typer.echo(f"  → {c['scored']} scored, {c['errors']} errors")
+
+    typer.echo("[people-find] …")
+    apollo_key: Optional[str] = os.environ.get("APOLLO_API_KEY")
+    c = run_people_finding(
+        llm=llm, store=store, config=cfg.people_search,
+        threshold=cfg.matching.score_threshold_for_outreach,
+        apollo_api_key=apollo_key,
+    )
+    typer.echo(f"  → {c['found']} found, {c['not_found']} not found, {c['errors']} errors")
+
+    typer.echo("[outreach] …")
+    first_resume = resume_texts[cfg.role_variants[0].name] if resume_texts else ""
+    c = run_outreach(
+        llm=llm, store=store,
+        threshold=cfg.matching.score_threshold_for_outreach,
+        resume_summary=make_resume_summary(first_resume),
+    )
+    typer.echo(f"  → {c['drafted']} drafted, {c['errors']} errors")
+
+    typer.echo("[report] …")
+    paths = run_report(store)
+    typer.echo(f"  → {paths['markdown']}")
+    typer.echo(f"  → {paths['csv']}")
