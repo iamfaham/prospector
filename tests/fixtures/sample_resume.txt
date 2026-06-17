@@ -1,0 +1,17 @@
+John Doe | john@example.com | github.com/johndoe
+
+EXPERIENCE
+Senior Backend Engineer — Acme Corp (2021–present)
+  - Built distributed data pipeline in Python/Go processing 10M events/day
+  - Designed REST APIs consumed by 50+ internal teams
+  - Led migration from monolith to microservices (Kubernetes, Postgres)
+
+Software Engineer — StartupXYZ (2019–2021)
+  - Python/Django backend for SaaS product (10k users)
+  - Integrated third-party APIs (Stripe, Twilio)
+
+SKILLS
+Python, Go, Postgres, Redis, Kubernetes, REST APIs, distributed systems
+
+EDUCATION
+B.S. Computer Science — State University, 2019

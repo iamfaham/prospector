@@ -1,0 +1,19 @@
+role_variants:
+  - name: backend-eng
+    resume: resumes/backend.txt
+    keywords: [backend, distributed systems, python, go]
+    seniority: mid-senior
+
+sourcing:
+  max_queries_per_role_per_run: 8
+  funding_lookback_days: 30
+
+matching:
+  score_threshold_for_outreach: 7
+
+llm:
+  provider: openrouter
+  model: anthropic/claude-sonnet-4-5
+
+people_search:
+  paid_api: null

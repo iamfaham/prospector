@@ -1,0 +1,30 @@
+[project]
+name = "everything-job"
+version = "0.1.0"
+description = "Job-finding agent: source startups, match resume, draft outreach"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "typer>=0.12",
+    "pydantic>=2.7",
+    "httpx>=0.27",
+    "openai>=1.30",
+    "pdfplumber>=0.11",
+    "pyyaml>=6.0",
+]
+
+[project.scripts]
+job-agent = "job_agent.cli:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["job_agent"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.2",
+    "pytest-mock>=3.14",
+]
