@@ -10,3 +10,11 @@ wheels/
 .venv
 
 docs/
+
+# Secrets
+.env
+
+# Runtime artifacts
+job_agent.db
+reports/
+resumes/

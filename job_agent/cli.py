@@ -1,9 +1,18 @@
 # job_agent/cli.py
 import logging
 import os
+import sys
 from pathlib import Path
 from typing import Optional
 import typer
+from dotenv import load_dotenv
+
+load_dotenv()  # reads .env from cwd (or any parent) into os.environ
+
+# Force UTF-8 output on Windows (prevents CP1252 encoding errors in terminal)
+if sys.platform == "win32":
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 from job_agent.config import load_config
 from job_agent.llm.client import LLMClient
