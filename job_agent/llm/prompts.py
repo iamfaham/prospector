@@ -122,6 +122,48 @@ def people_verify_prompt(
     return system, user
 
 
+def resume_tailor_latex_prompt(
+    latex_src: str,
+    role_variant_keywords: list[str],
+    role_variant_seniority: str,
+    company_name: str,
+    job_title: str | None,
+    job_description: str | None,
+    funding_signal: str | None,
+) -> tuple[str, str]:
+    """Prompt that returns tailored LaTeX source — no markdown, no fences."""
+    if job_title and job_description:
+        context = f"Job title: {job_title}\n\nJob description:\n{job_description[:2500]}"
+    elif job_title:
+        context = f"Job title: {job_title}"
+    elif funding_signal:
+        context = f"Company signal (no JD): {funding_signal[:600]}"
+    else:
+        context = "No JD — tailor for a general senior engineering role."
+
+    keywords = ", ".join(role_variant_keywords)
+    system = (
+        "You are an expert resume writer and LaTeX specialist. "
+        "You tailor a candidate's LaTeX resume for a specific opportunity. "
+        "Rules:\n"
+        "1. Return ONLY the complete, compilable LaTeX source — no explanation, no ```latex fences.\n"
+        "2. Keep the document class, preamble, and overall structure identical.\n"
+        "3. Subtly reorder and reword bullet points to surface skills most relevant to this role.\n"
+        "4. You may add concise phrases where the candidate genuinely has the experience — "
+        "never fabricate roles, companies, degrees, or dates.\n"
+        "5. Adjust the summary/objective section (if present) to mention this role type.\n"
+        "6. Do NOT keyword-stuff — hiring managers notice. Aim for natural fit."
+    )
+    user = (
+        f"Tailor this resume for a role at {company_name}.\n\n"
+        f"Target: {role_variant_seniority} with expertise in {keywords}.\n\n"
+        f"=== OPPORTUNITY ===\n{context}\n\n"
+        f"=== LATEX SOURCE ===\n{latex_src}\n\n"
+        "Return the full tailored LaTeX source now."
+    )
+    return system, user
+
+
 def resume_tailor_prompt(
     resume_text: str,
     role_variant_keywords: list[str],

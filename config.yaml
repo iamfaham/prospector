@@ -1,6 +1,9 @@
+candidate_name: Faham   # used in output filenames: Faham_AcmeCorp_BackendEng_2026-06-17.pdf
+
 role_variants:
   - name: backend-eng
-    resume: resumes/backend.txt
+    resume: resumes/backend.txt          # PDF or txt — used for scoring
+    # resume_latex: resumes/resume.tex   # uncomment to enable PDF/DOCX tailored output
     keywords: [backend, distributed systems, python, go]
     seniority: mid-senior
 

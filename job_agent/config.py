@@ -6,9 +6,10 @@ from pydantic import BaseModel
 
 class RoleVariantConfig(BaseModel):
     name: str
-    resume: str
+    resume: str                           # path to PDF/txt used for text extraction & scoring
     keywords: list[str]
     seniority: str
+    resume_latex: Optional[str] = None    # path to .tex source; enables PDF/DOCX tailoring output
 
 
 class SourcingConfig(BaseModel):
@@ -30,6 +31,7 @@ class PeopleSearchConfig(BaseModel):
 
 
 class Config(BaseModel):
+    candidate_name: str = "candidate"     # used in output filenames
     role_variants: list[RoleVariantConfig]
     sourcing: SourcingConfig = SourcingConfig()
     matching: MatchingConfig = MatchingConfig()

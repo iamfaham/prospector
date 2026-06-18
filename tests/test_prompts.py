@@ -5,6 +5,7 @@ from job_agent.llm.prompts import (
     people_search_query_prompt,
     people_verify_prompt,
     draft_message_prompt,
+    resume_tailor_latex_prompt,
 )
 from job_agent.config import RoleVariantConfig
 from job_agent.models import RawResult
@@ -54,6 +55,38 @@ def test_draft_message_prompt_with_contact():
     )
     assert "Alice" in user or "Alice" in system
     assert "Acme AI" in user
+
+def test_resume_tailor_latex_prompt_with_jd():
+    system, user = resume_tailor_latex_prompt(
+        latex_src=r"\documentclass{article}\begin{document}John Doe\end{document}",
+        role_variant_keywords=["python", "go"],
+        role_variant_seniority="mid-senior",
+        company_name="AcmeCorp",
+        job_title="Senior Backend Engineer",
+        job_description="Must know distributed systems and Python.",
+        funding_signal=None,
+    )
+    assert "AcmeCorp" in user
+    assert "Senior Backend Engineer" in user
+    assert "distributed systems" in user
+    # System must instruct LaTeX-only output
+    assert "LaTeX" in system
+    assert "fabricate" in system.lower() or "invent" in system.lower() or "never" in system.lower()
+
+
+def test_resume_tailor_latex_prompt_funding_fallback():
+    _, user = resume_tailor_latex_prompt(
+        latex_src=r"\documentclass{article}\begin{document}Resume\end{document}",
+        role_variant_keywords=["go"],
+        role_variant_seniority="senior",
+        company_name="FundedCo",
+        job_title=None,
+        job_description=None,
+        funding_signal="Raised $20M Series B for API infrastructure.",
+    )
+    assert "Series B" in user
+    assert "FundedCo" in user
+
 
 def test_draft_message_prompt_without_contact():
     system, user = draft_message_prompt(
