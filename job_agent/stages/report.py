@@ -143,12 +143,12 @@ def _compile_with_fix(
 
     if pdf_ok:
         produced.append(str(pdf_path.relative_to(report_dir)))
-        # DOCX from the same final source
-        if compile_docx(src, docx_path):
+        # DOCX converted from the final PDF (via pdf2docx, no system tool needed)
+        if compile_docx(pdf_path, docx_path):
             produced.append(str(docx_path.relative_to(report_dir)))
             logger.info("[report] DOCX OK: %s", docx_path.name)
         else:
-            logger.warning("[report] DOCX skipped for %s (pandoc unavailable/failed)", stem)
+            logger.warning("[report] DOCX skipped for %s (pdf2docx unavailable/failed)", stem)
     else:
         logger.warning("[report] no PDF produced for %s after %d attempts", stem, max_attempts)
 

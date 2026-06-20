@@ -195,49 +195,46 @@ def test_compile_pdf_timeout(tmp_path):
 # ── compile_docx ──────────────────────────────────────────────────────────────
 
 def test_compile_docx_success(tmp_path):
+    pdf_in = tmp_path / "resume.pdf"
+    pdf_in.write_bytes(b"%PDF-1.4 fake")
     docx_out = tmp_path / "resume.docx"
 
-    def fake_run(cmd, **kwargs):
-        for arg in cmd:
-            if arg.startswith("--output="):
-                Path(arg.split("=", 1)[1]).write_bytes(b"PK fake docx")
-        r = MagicMock()
-        r.returncode = 0
-        return r
+    fake_cv = MagicMock()
 
-    with patch("job_agent.output.compiler.subprocess.run", side_effect=fake_run):
-        result = compile_docx(FAKE_LATEX, docx_out)
+    def fake_convert(out, **kwargs):
+        Path(out).write_bytes(b"PK fake docx")
+
+    fake_cv.convert.side_effect = fake_convert
+
+    with patch("pdf2docx.Converter", return_value=fake_cv):
+        result = compile_docx(pdf_in, docx_out)
 
     assert result is True
     assert docx_out.exists()
+    fake_cv.close.assert_called_once()
 
 
-def test_compile_docx_pandoc_not_found(tmp_path):
+def test_compile_docx_not_installed(tmp_path):
+    pdf_in = tmp_path / "resume.pdf"
+    pdf_in.write_bytes(b"%PDF-1.4 fake")
     docx_out = tmp_path / "resume.docx"
-    with patch("job_agent.output.compiler.subprocess.run",
-               side_effect=FileNotFoundError("pandoc not found")):
-        result = compile_docx(FAKE_LATEX, docx_out)
+
+    with patch.dict("sys.modules", {"pdf2docx": None}):
+        result = compile_docx(pdf_in, docx_out)
 
     assert result is False
     assert not docx_out.exists()
 
 
-def test_compile_docx_nonzero_exit(tmp_path):
+def test_compile_docx_conversion_error(tmp_path):
+    pdf_in = tmp_path / "resume.pdf"
+    pdf_in.write_bytes(b"%PDF-1.4 fake")
     docx_out = tmp_path / "resume.docx"
-    bad = MagicMock()
-    bad.returncode = 2
-    bad.stderr = b"pandoc: unknown format"
 
-    with patch("job_agent.output.compiler.subprocess.run", return_value=bad):
-        result = compile_docx(FAKE_LATEX, docx_out)
+    fake_cv = MagicMock()
+    fake_cv.convert.side_effect = RuntimeError("parse error")
 
-    assert result is False
-
-
-def test_compile_docx_timeout(tmp_path):
-    docx_out = tmp_path / "resume.docx"
-    with patch("job_agent.output.compiler.subprocess.run",
-               side_effect=subprocess.TimeoutExpired("pandoc", 30)):
-        result = compile_docx(FAKE_LATEX, docx_out)
+    with patch("pdf2docx.Converter", return_value=fake_cv):
+        result = compile_docx(pdf_in, docx_out)
 
     assert result is False

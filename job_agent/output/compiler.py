@@ -1,6 +1,6 @@
 # job_agent/output/compiler.py
 """
-Compile LaTeX source to PDF (via pdflatex) and DOCX (via pandoc).
+Compile LaTeX source to PDF (via pdflatex) and DOCX (via pdf2docx).
 
 Public API
 ----------
@@ -11,8 +11,9 @@ try_compile_pdf(latex_src, output_path) -> (ok: bool, pages: int, error_log: str
 compile_pdf(latex_src, output_path) -> bool
     Backward-compatible single-attempt wrapper (no retry, no LLM).
 
-compile_docx(latex_src, output_path) -> bool
-    Convert LaTeX to DOCX via pandoc.
+compile_docx(pdf_path, output_path) -> bool
+    Convert an existing PDF to DOCX via pdf2docx (pip-installable, no system tool).
+    Requires: uv add pdf2docx
 """
 import logging
 import re
@@ -89,39 +90,25 @@ def compile_pdf(latex_src: str, output_path: Path) -> bool:
     return ok
 
 
-def compile_docx(latex_src: str, output_path: Path) -> bool:
-    """Convert LaTeX source to DOCX using pandoc.
+def compile_docx(pdf_path: Path, output_path: Path) -> bool:
+    """Convert a PDF to DOCX using pdf2docx (pip-installable, no system tool needed).
 
-    Requires: pandoc (https://pandoc.org/installing.html).
+    Requires: uv add pdf2docx
     Returns True when a DOCX was written to *output_path*.
     """
     try:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            tex_file = Path(tmpdir) / "resume.tex"
-            tex_file.write_text(latex_src, encoding="utf-8")
+        from pdf2docx import Converter  # noqa: PLC0415
 
-            result = subprocess.run(
-                ["pandoc", str(tex_file), "--from=latex", "--to=docx",
-                 f"--output={output_path}"],
-                capture_output=True,
-                timeout=30,
-            )
-            if result.returncode == 0 and output_path.exists():
-                return True
+        cv = Converter(str(pdf_path))
+        cv.convert(str(output_path), start=0, end=None)
+        cv.close()
+        return output_path.exists()
 
-            logger.warning(
-                "[compiler] pandoc failed (exit %d): %s",
-                result.returncode,
-                result.stderr.decode(errors="replace")[-500:],
-            )
-            return False
-
-    except FileNotFoundError:
+    except ImportError:
         logger.warning(
-            "[compiler] pandoc not found — install from https://pandoc.org/installing.html "
-            "to enable DOCX output"
+            "[compiler] pdf2docx not installed — run: uv add pdf2docx"
         )
         return False
-    except subprocess.TimeoutExpired:
-        logger.warning("[compiler] pandoc timed out after 30 s")
+    except Exception as exc:
+        logger.warning("[compiler] pdf2docx failed: %s", exc)
         return False
