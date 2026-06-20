@@ -56,7 +56,7 @@ people_search:
 def test_run_produces_report(tmp_path, cfg_file, bigset_csv_path, monkeypatch):
     monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
     monkeypatch.setenv("BIGSET_EXPORT_PATH", bigset_csv_path)
-    monkeypatch.setenv("SERPER_API_KEY", "fake-key")
+    monkeypatch.setenv("TAVILY_API_KEY", "fake-key")
     monkeypatch.chdir(tmp_path)
 
     idx = {"n": 0}

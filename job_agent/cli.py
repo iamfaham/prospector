@@ -44,12 +44,12 @@ def _build(config_path: str):
     llm = LLMClient(api_key=api_key, model=cfg.llm.model)
 
     connectors = []
-    serper_key = os.environ.get("SERPER_API_KEY", "")
-    if serper_key:
-        connectors.append(WebSearchConnector(api_key=serper_key, connector_type="funding_news"))
-        connectors.append(WebSearchConnector(api_key=serper_key, connector_type="job_board"))
+    tavily_key = os.environ.get("TAVILY_API_KEY", "")
+    if tavily_key:
+        connectors.append(WebSearchConnector(api_key=tavily_key, connector_type="funding_news"))
+        connectors.append(WebSearchConnector(api_key=tavily_key, connector_type="job_board"))
     else:
-        typer.echo("Warning: SERPER_API_KEY not set — web search disabled", err=True)
+        typer.echo("Warning: TAVILY_API_KEY not set — web search disabled", err=True)
 
     bigset_path = os.environ.get("BIGSET_EXPORT_PATH", "")
     if bigset_path and Path(bigset_path).exists():
