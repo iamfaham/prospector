@@ -131,7 +131,11 @@ def resume_tailor_latex_prompt(
     job_description: str | None,
     funding_signal: str | None,
 ) -> tuple[str, str]:
-    """Prompt that returns tailored LaTeX source — no markdown, no fences."""
+    """Prompt that returns tailored LaTeX source — no markdown, no fences.
+
+    Hard constraint: the output MUST compile to exactly ONE page.
+    The input is already a one-pager, so only reword/reorder — never add content.
+    """
     if job_title and job_description:
         context = f"Job title: {job_title}\n\nJob description:\n{job_description[:2500]}"
     elif job_title:
@@ -144,22 +148,82 @@ def resume_tailor_latex_prompt(
     keywords = ", ".join(role_variant_keywords)
     system = (
         "You are an expert resume writer and LaTeX specialist. "
-        "You tailor a candidate's LaTeX resume for a specific opportunity. "
-        "Rules:\n"
-        "1. Return ONLY the complete, compilable LaTeX source — no explanation, no ```latex fences.\n"
-        "2. Keep the document class, preamble, and overall structure identical.\n"
-        "3. Subtly reorder and reword bullet points to surface skills most relevant to this role.\n"
-        "4. You may add concise phrases where the candidate genuinely has the experience — "
-        "never fabricate roles, companies, degrees, or dates.\n"
-        "5. Adjust the summary/objective section (if present) to mention this role type.\n"
-        "6. Do NOT keyword-stuff — hiring managers notice. Aim for natural fit."
+        "You tailor a candidate's one-page LaTeX resume for a specific opportunity.\n\n"
+        "STRICT RULES — violating any rule makes the output unusable:\n"
+        "1. Return ONLY the complete, compilable LaTeX source. No explanation, no ```latex fences.\n"
+        "2. The output MUST fit on exactly ONE page when compiled — the input is already a "
+        "one-pager, so do NOT add any new content, sections, or lines. Only reword or "
+        "reorder existing content.\n"
+        "3. Keep the document class, preamble, page geometry, font sizes, and margins identical.\n"
+        "4. Do NOT change the candidate's name, contact details, company names, job titles, "
+        "dates, or degree information.\n"
+        "5. Subtly reorder bullet points within each role and reword them to surface skills "
+        "most relevant to this opportunity.\n"
+        "6. You may tighten bullet point wording to save space — shorter is fine.\n"
+        "7. Never fabricate experience, skills, or credentials the candidate does not have.\n"
+        "8. Do NOT keyword-stuff — natural fit only."
     )
     user = (
-        f"Tailor this resume for a role at {company_name}.\n\n"
+        f"Tailor this one-page resume for a role at {company_name}.\n\n"
         f"Target: {role_variant_seniority} with expertise in {keywords}.\n\n"
         f"=== OPPORTUNITY ===\n{context}\n\n"
+        f"=== LATEX SOURCE (one page — do not expand) ===\n{latex_src}\n\n"
+        "Return the full tailored LaTeX source now. Must compile to exactly one page."
+    )
+    return system, user
+
+
+def fix_latex_compile_error_prompt(
+    latex_src: str,
+    error_log: str,
+) -> tuple[str, str]:
+    """Prompt to fix a LaTeX source that failed to compile.
+
+    Returns a corrected LaTeX source that should compile cleanly.
+    """
+    system = (
+        "You are a LaTeX expert. A LaTeX resume failed to compile. "
+        "Fix the compilation error and return the corrected LaTeX source.\n\n"
+        "Rules:\n"
+        "1. Return ONLY the complete corrected LaTeX — no explanation, no ```latex fences.\n"
+        "2. Fix only what is causing the error; do not rewrite unrelated sections.\n"
+        "3. Preserve all content, structure, and formatting exactly as given.\n"
+        "4. The output must still fit on one page."
+    )
+    user = (
+        f"The following LaTeX failed to compile.\n\n"
+        f"=== PDFLATEX ERROR LOG ===\n{error_log}\n\n"
         f"=== LATEX SOURCE ===\n{latex_src}\n\n"
-        "Return the full tailored LaTeX source now."
+        "Return the fixed LaTeX source."
+    )
+    return system, user
+
+
+def fix_latex_overflow_prompt(
+    latex_src: str,
+    page_count: int,
+) -> tuple[str, str]:
+    """Prompt to condense a LaTeX resume that compiled to more than one page.
+
+    Returns a shorter LaTeX source that fits on one page.
+    """
+    system = (
+        "You are an expert resume editor and LaTeX specialist. "
+        f"A LaTeX resume compiled to {page_count} pages but must fit on ONE page.\n\n"
+        "Rules:\n"
+        "1. Return ONLY the complete condensed LaTeX — no explanation, no ```latex fences.\n"
+        "2. Do NOT change the document class, preamble, page geometry, or font sizes.\n"
+        "3. Do NOT remove entire sections or jobs — instead shorten bullet points.\n"
+        "4. Trim the longest bullet points first: cut filler words, combine related points, "
+        "or drop the least impactful bullet in each role (maximum one per role).\n"
+        "5. Do NOT change the candidate's name, contact details, company names, job titles, "
+        "dates, or degrees.\n"
+        "6. Every remaining bullet must still be truthful and make sense."
+    )
+    user = (
+        f"This resume compiled to {page_count} pages. Condense it to fit on ONE page.\n\n"
+        f"=== LATEX SOURCE ===\n{latex_src}\n\n"
+        "Return the condensed LaTeX source. Must compile to exactly one page."
     )
     return system, user
 

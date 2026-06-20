@@ -4,17 +4,24 @@ import logging
 import re
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import TYPE_CHECKING, Optional
 
-from job_agent.output.compiler import compile_docx, compile_pdf
+from job_agent.output.compiler import compile_docx, try_compile_pdf
 from job_agent.store import Store
 
+if TYPE_CHECKING:
+    from job_agent.llm.client import LLMClient
+
 logger = logging.getLogger(__name__)
+
+_MAX_FIX_ATTEMPTS = 3
 
 
 def run_report(
     store: Store,
     output_dir: str = "reports",
     candidate_name: str = "candidate",
+    llm: Optional["LLMClient"] = None,
 ) -> dict[str, str]:
     ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     report_dir = Path(output_dir) / ts
@@ -35,34 +42,14 @@ def run_report(
                             row.get("job_title"), date_str)
         files: list[str] = []
 
-        # Detect whether the tailored text is LaTeX or markdown
         is_latex = tailored.lstrip().startswith("\\") or "\\documentclass" in tailored
 
         if is_latex:
-            # Save raw .tex
-            tex_path = resumes_dir / f"{stem}.tex"
-            tex_path.write_text(tailored, encoding="utf-8")
-            files.append(str(tex_path.relative_to(report_dir)))
-
-            # Attempt PDF
-            pdf_path = resumes_dir / f"{stem}.pdf"
-            if compile_pdf(tailored, pdf_path):
-                files.append(str(pdf_path.relative_to(report_dir)))
-                logger.info("[report] PDF: %s", pdf_path.name)
-            else:
-                logger.warning("[report] PDF skipped for %s (pdflatex unavailable/failed)",
-                               row.get("company_name"))
-
-            # Attempt DOCX
-            docx_path = resumes_dir / f"{stem}.docx"
-            if compile_docx(tailored, docx_path):
-                files.append(str(docx_path.relative_to(report_dir)))
-                logger.info("[report] DOCX: %s", docx_path.name)
-            else:
-                logger.warning("[report] DOCX skipped for %s (pandoc unavailable/failed)",
-                               row.get("company_name"))
+            final_latex, produced = _compile_with_fix(
+                tailored, stem, resumes_dir, report_dir, llm,
+            )
+            files.extend(produced)
         else:
-            # Markdown tailored resume
             md_path = resumes_dir / f"{stem}.md"
             md_path.write_text(tailored, encoding="utf-8")
             files.append(str(md_path.relative_to(report_dir)))
@@ -76,6 +63,96 @@ def run_report(
     _write_csv(rows, csv_path)
 
     return {"markdown": str(md_path), "csv": str(csv_path)}
+
+
+def _compile_with_fix(
+    latex_src: str,
+    stem: str,
+    resumes_dir: Path,
+    report_dir: Path,
+    llm: Optional["LLMClient"],
+    max_attempts: int = _MAX_FIX_ATTEMPTS,
+) -> tuple[str, list[str]]:
+    """Agentic compile loop.
+
+    1. Try to compile the LaTeX to PDF.
+    2a. On compile error  → ask LLM to fix the source, retry.
+    2b. On page overflow  → ask LLM to condense, retry.
+    3. On success         → compile DOCX from the final (possibly fixed) source.
+    4. Always write the final .tex regardless of PDF/DOCX outcome.
+
+    Returns (final_latex_src, list_of_relative_file_paths).
+    """
+    # Lazy import to avoid circular deps at module load time
+    from job_agent.llm.prompts import fix_latex_compile_error_prompt, fix_latex_overflow_prompt
+
+    src = latex_src
+    pdf_path = resumes_dir / f"{stem}.pdf"
+    tex_path = resumes_dir / f"{stem}.tex"
+    docx_path = resumes_dir / f"{stem}.docx"
+
+    pdf_ok = False
+
+    for attempt in range(max_attempts):
+        ok, pages, error_log = try_compile_pdf(src, pdf_path)
+
+        if ok and pages <= 1:
+            pdf_ok = True
+            logger.info("[report] PDF OK (1 page): %s", pdf_path.name)
+            break
+
+        if ok and pages > 1:
+            logger.warning(
+                "[report] PDF is %d pages for %s (attempt %d/%d) — asking LLM to condense",
+                pages, stem, attempt + 1, max_attempts,
+            )
+            if llm and not llm.is_over_budget():
+                sys_p, usr_p = fix_latex_overflow_prompt(src, pages)
+                try:
+                    src = llm.call(sys_p, usr_p)
+                except Exception as exc:
+                    logger.error("[report] LLM overflow-fix failed: %s", exc)
+                    # Keep last src, one more compile attempt with what we have
+                    pdf_ok = True  # accept multi-page rather than lose PDF
+                    break
+            else:
+                # No LLM or over budget — accept the multi-page PDF
+                pdf_ok = True
+                logger.warning("[report] accepting %d-page PDF (no LLM available)", pages)
+                break
+        else:
+            # Compile error
+            logger.warning(
+                "[report] pdflatex error for %s (attempt %d/%d):\n%s",
+                stem, attempt + 1, max_attempts, error_log[-600:],
+            )
+            if llm and not llm.is_over_budget():
+                sys_p, usr_p = fix_latex_compile_error_prompt(src, error_log)
+                try:
+                    src = llm.call(sys_p, usr_p)
+                except Exception as exc:
+                    logger.error("[report] LLM compile-fix failed: %s", exc)
+                    break
+            else:
+                logger.warning("[report] pdflatex unavailable or no LLM — skipping PDF")
+                break
+
+    # Always write the (possibly fixed) .tex
+    tex_path.write_text(src, encoding="utf-8")
+    produced: list[str] = [str(tex_path.relative_to(report_dir))]
+
+    if pdf_ok:
+        produced.append(str(pdf_path.relative_to(report_dir)))
+        # DOCX from the same final source
+        if compile_docx(src, docx_path):
+            produced.append(str(docx_path.relative_to(report_dir)))
+            logger.info("[report] DOCX OK: %s", docx_path.name)
+        else:
+            logger.warning("[report] DOCX skipped for %s (pandoc unavailable/failed)", stem)
+    else:
+        logger.warning("[report] no PDF produced for %s after %d attempts", stem, max_attempts)
+
+    return src, produced
 
 
 def _write_markdown(rows: list[dict], path: Path) -> None:

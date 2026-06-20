@@ -122,6 +122,6 @@ def run(
     typer.echo(f"  → {c['drafted']} drafted, {c['errors']} errors")
 
     typer.echo("[report] …")
-    paths = run_report(store, candidate_name=cfg.candidate_name)
+    paths = run_report(store, candidate_name=cfg.candidate_name, llm=llm)
     typer.echo(f"  → {paths['markdown']}")
     typer.echo(f"  → {paths['csv']}")

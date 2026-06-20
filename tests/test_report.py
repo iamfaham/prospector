@@ -1,7 +1,7 @@
 # tests/test_report.py
 import csv
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from job_agent.stages.report import _resume_stem, _title_slug, run_report
 from job_agent.store import Store
@@ -69,8 +69,9 @@ def test_empty_store_produces_valid_report(tmp_path):
     assert "Total matches: 0" in md
 
 
-def test_latex_resume_writes_tex_and_attempts_pdf_docx(tmp_path):
-    """When resume_tailored_text is LaTeX, report writes .tex and calls compilers."""
+def _latex_store(tmp_path, latex_src=None):
+    """Store seeded with one high-score match that has a LaTeX resume draft."""
+    src = latex_src or r"\documentclass{article}\begin{document}Tailored\end{document}"
     store = Store(db_path=str(tmp_path / "test.db"))
     rv_id = store.upsert_role_variant(
         RoleVariant(name="be", resume_path="r.txt", keywords=[], seniority="mid")
@@ -82,29 +83,120 @@ def test_latex_resume_writes_tex_and_attempts_pdf_docx(tmp_path):
     store.insert_resume_draft(ResumeDraft(
         match_id=mid, role_variant_id=rv_id,
         company_name="LatexCo", job_title="SWE",
-        tailored_text=r"\documentclass{article}\begin{document}Tailored\end{document}",
+        tailored_text=src,
     ))
+    return store
 
-    with patch("job_agent.stages.report.compile_pdf", return_value=False) as mpdf, \
-         patch("job_agent.stages.report.compile_docx", return_value=False) as mdocx:
-        paths = run_report(store, output_dir=str(tmp_path / "reports"),
-                           candidate_name="Faham")
 
-    # .tex file must always be written regardless of compiler availability
+def test_latex_resume_writes_tex_always(tmp_path):
+    """The .tex file is always written even when pdflatex is unavailable."""
+    store = _latex_store(tmp_path)
+
+    # try_compile_pdf returns (False, 0, "not installed") — pdflatex absent
+    with patch("job_agent.stages.report.try_compile_pdf", return_value=(False, 0, "pdflatex not installed")):
+        paths = run_report(store, output_dir=str(tmp_path / "reports"), candidate_name="Faham")
+
     report_dir = Path(paths["markdown"]).parent
     tex_files = list((report_dir / "resumes").glob("*.tex"))
     assert len(tex_files) == 1
     name = tex_files[0].name.lower()
     assert "faham" in name
     assert "latexco" in name
-
-    # Compilers were called once each
-    mpdf.assert_called_once()
-    mdocx.assert_called_once()
-
-    # Markdown links the .tex file
     md = Path(paths["markdown"]).read_text()
     assert ".tex" in md
+
+
+def test_latex_compile_success_produces_pdf_and_docx(tmp_path):
+    """When pdflatex succeeds (1 page) and pandoc succeeds, both files appear."""
+    store = _latex_store(tmp_path)
+
+    with patch("job_agent.stages.report.try_compile_pdf", return_value=(True, 1, "")) as mpdf, \
+         patch("job_agent.stages.report.compile_docx", return_value=True) as mdocx:
+        paths = run_report(store, output_dir=str(tmp_path / "reports"), candidate_name="Faham")
+
+    report_dir = Path(paths["markdown"]).parent
+    resumes = report_dir / "resumes"
+    assert any(resumes.glob("*.tex"))
+    md = Path(paths["markdown"]).read_text()
+    assert ".pdf" in md
+    assert ".docx" in md
+
+
+def test_compile_error_triggers_llm_fix_and_retry(tmp_path):
+    """On compile error, LLM is asked to fix; fixed src is retried."""
+    store = _latex_store(tmp_path)
+    llm = MagicMock()
+    llm.is_over_budget.return_value = False
+    fixed_latex = r"\documentclass{article}\begin{document}Fixed\end{document}"
+    llm.call.return_value = fixed_latex
+
+    call_count = [0]
+    def fake_compile(latex_src, path):
+        call_count[0] += 1
+        if call_count[0] == 1:
+            return (False, 0, "! LaTeX Error: undefined control sequence")
+        return (True, 1, "")
+
+    with patch("job_agent.stages.report.try_compile_pdf", side_effect=fake_compile), \
+         patch("job_agent.stages.report.compile_docx", return_value=False):
+        run_report(store, output_dir=str(tmp_path / "reports"), candidate_name="Faham", llm=llm)
+
+    # LLM was called once to fix the error
+    assert llm.call.call_count == 1
+    # pdflatex was called twice (first fail, second success)
+    assert call_count[0] == 2
+    # Final .tex contains the fixed source
+    report_dir = list((tmp_path / "reports").iterdir())[0]
+    tex = next((report_dir / "resumes").glob("*.tex")).read_text()
+    assert "Fixed" in tex
+
+
+def test_overflow_triggers_llm_condense_and_retry(tmp_path):
+    """On 2-page PDF, LLM is asked to condense; condensed src is retried."""
+    store = _latex_store(tmp_path)
+    llm = MagicMock()
+    llm.is_over_budget.return_value = False
+    condensed_latex = r"\documentclass{article}\begin{document}Short\end{document}"
+    llm.call.return_value = condensed_latex
+
+    call_count = [0]
+    def fake_compile(latex_src, path):
+        call_count[0] += 1
+        if call_count[0] == 1:
+            return (True, 2, "")  # first attempt: 2 pages
+        return (True, 1, "")     # second attempt: 1 page
+
+    with patch("job_agent.stages.report.try_compile_pdf", side_effect=fake_compile), \
+         patch("job_agent.stages.report.compile_docx", return_value=False):
+        run_report(store, output_dir=str(tmp_path / "reports"), candidate_name="Faham", llm=llm)
+
+    assert llm.call.call_count == 1
+    assert call_count[0] == 2
+    report_dir = list((tmp_path / "reports").iterdir())[0]
+    tex = next((report_dir / "resumes").glob("*.tex")).read_text()
+    assert "Short" in tex
+
+
+def test_no_llm_accepts_compile_failure_gracefully(tmp_path):
+    """Without LLM, a compile failure just skips PDF — no crash."""
+    store = _latex_store(tmp_path)
+
+    with patch("job_agent.stages.report.try_compile_pdf", return_value=(False, 0, "error")):
+        paths = run_report(store, output_dir=str(tmp_path / "reports"), candidate_name="Faham")
+
+    assert Path(paths["markdown"]).exists()
+
+
+def test_no_llm_accepts_multipage_pdf(tmp_path):
+    """Without LLM, a 2-page PDF is accepted rather than retried."""
+    store = _latex_store(tmp_path)
+
+    with patch("job_agent.stages.report.try_compile_pdf", return_value=(True, 2, "")), \
+         patch("job_agent.stages.report.compile_docx", return_value=False):
+        paths = run_report(store, output_dir=str(tmp_path / "reports"), candidate_name="Faham")
+
+    md = Path(paths["markdown"]).read_text()
+    assert ".pdf" in md  # PDF is linked even though it's 2 pages
 
 
 def test_resume_stem_naming():

@@ -6,6 +6,8 @@ from job_agent.llm.prompts import (
     people_verify_prompt,
     draft_message_prompt,
     resume_tailor_latex_prompt,
+    fix_latex_compile_error_prompt,
+    fix_latex_overflow_prompt,
 )
 from job_agent.config import RoleVariantConfig
 from job_agent.models import RawResult
@@ -86,6 +88,51 @@ def test_resume_tailor_latex_prompt_funding_fallback():
     )
     assert "Series B" in user
     assert "FundedCo" in user
+
+
+def test_fix_latex_compile_error_prompt():
+    system, user = fix_latex_compile_error_prompt(
+        latex_src=r"\documentclass{article}\begin{document}\badcmd\end{document}",
+        error_log="! Undefined control sequence.\n\\badcmd",
+    )
+    assert "\\badcmd" in user
+    assert "LaTeX" in system
+    # Must instruct return of compilable LaTeX only
+    assert "fences" in system.lower() or "explanation" in system.lower()
+
+
+def test_fix_latex_compile_error_prompt_preserves_error_log():
+    error = "! LaTeX Error: File not found."
+    _, user = fix_latex_compile_error_prompt("\\documentclass{article}", error)
+    assert error in user
+
+
+def test_fix_latex_overflow_prompt():
+    system, user = fix_latex_overflow_prompt(
+        latex_src=r"\documentclass{article}\begin{document}Long resume\end{document}",
+        page_count=2,
+    )
+    assert "2" in user
+    assert "one page" in user.lower() or "ONE page" in user
+    assert "condense" in system.lower() or "shorten" in system.lower() or "trim" in system.lower()
+
+
+def test_fix_latex_overflow_prompt_mentions_page_count():
+    system, user = fix_latex_overflow_prompt("src", 3)
+    assert "3" in system or "3" in user
+
+
+def test_resume_tailor_latex_prompt_enforces_one_page():
+    system, _ = resume_tailor_latex_prompt(
+        latex_src=r"\documentclass{article}\begin{document}Resume\end{document}",
+        role_variant_keywords=["python"],
+        role_variant_seniority="mid",
+        company_name="Co",
+        job_title=None,
+        job_description=None,
+        funding_signal=None,
+    )
+    assert "one page" in system.lower() or "ONE page" in system
 
 
 def test_draft_message_prompt_without_contact():
