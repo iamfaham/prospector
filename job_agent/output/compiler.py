@@ -46,7 +46,9 @@ def try_compile_pdf(latex_src: str, output_path: Path) -> tuple[bool, int, str]:
       error_log – relevant pdflatex output on failure, empty string on success
     """
     try:
-        with tempfile.TemporaryDirectory() as tmpdir:
+        # Use output_path's parent so the temp dir stays inside the project tree,
+        # avoiding Windows system-temp paths that contain spaces (pdflatex can't handle them).
+        with tempfile.TemporaryDirectory(dir=output_path.parent) as tmpdir:
             tmp = Path(tmpdir)
             tex_file = tmp / "resume.tex"
             tex_file.write_text(latex_src, encoding="utf-8")
