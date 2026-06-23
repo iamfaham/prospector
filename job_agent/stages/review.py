@@ -131,20 +131,26 @@ def _show_company(match: dict, idx: int, total: int) -> None:
         match.get("funding_date"),
     ]
     funding = " · ".join(p for p in funding_parts if p) or "—"
-    reasoning = (match.get("reasoning") or "")[:140]
+    reasoning = (match.get("reasoning") or "")[:160]
     url = match.get("job_url") or match.get("source_url") or ""
+    signal = (match.get("raw_signal_text") or "")[:200]
+    jd = (match.get("job_description") or "")[:300]
 
-    typer.echo(f"\n{'─' * 62}")
-    typer.echo(f" {idx} / {total}  │  Score: {match['score']}/10")
-    typer.echo(f"{'─' * 62}")
+    typer.echo(f"\n{'─' * 66}")
+    typer.echo(f" {idx} / {total}  │  Score: {match['score']}/10  │  {match['role_variant_name']}")
+    typer.echo(f"{'─' * 66}")
     typer.echo(f" Company : {match['company_name']}")
     typer.echo(f" Funding : {funding}")
+    if signal:
+        typer.echo(f" Signal  : {signal}")
     if match.get("job_title"):
         typer.echo(f" Role    : {match['job_title']}")
+    if jd:
+        typer.echo(f" JD      : {jd}")
     typer.echo(f" Why     : {reasoning}")
     if url:
         typer.echo(f" URL     : {url}")
-    typer.echo(f"{'─' * 62}")
+    typer.echo(f"{'─' * 66}")
 
 
 def _prompt() -> str:
