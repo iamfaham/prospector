@@ -167,6 +167,38 @@ def review(
 
 
 @app.command()
+def compile(
+    config: str = typer.Option("config.yaml", help="Path to config.yaml"),
+) -> None:
+    """Compile any .tex files in reports/resumes/ that are missing their PDF."""
+    from job_agent.output.compiler import try_compile_pdf, compile_docx
+
+    resumes_dir = Path("reports/resumes")
+    if not resumes_dir.exists():
+        typer.echo("[compile] reports/resumes/ not found — nothing to compile.")
+        raise typer.Exit(0)
+
+    tex_files = sorted(resumes_dir.glob("*.tex"))
+    pending = [t for t in tex_files if not t.with_suffix(".pdf").exists()]
+    if not pending:
+        typer.echo("[compile] All .tex files already have a PDF.")
+        raise typer.Exit(0)
+
+    typer.echo(f"[compile] {len(pending)} .tex file(s) to compile …")
+    for tex in pending:
+        pdf_out = tex.with_suffix(".pdf")
+        typer.echo(f"  → {tex.name} …")
+        ok, pages, err = try_compile_pdf(tex.read_text(encoding="utf-8"), pdf_out)
+        if ok:
+            docx_out = tex.with_suffix(".docx")
+            compile_docx(pdf_out, docx_out)
+            typer.echo(f"  ✓ {pdf_out.name} ({pages}p)" + (f", {docx_out.name}" if docx_out.exists() else ""))
+        else:
+            short_err = err.strip().splitlines()[-1] if err.strip() else "unknown error"
+            typer.echo(f"  ✗ {tex.name}: {short_err}")
+
+
+@app.command()
 def tailor(
     config: str = typer.Option("config.yaml", help="Path to config.yaml"),
 ) -> None:
