@@ -1,6 +1,6 @@
-import pytest
+﻿import pytest
 from unittest.mock import MagicMock, patch
-from job_agent.llm.client import LLMClient, LLMError
+from prospector.llm.client import LLMClient, LLMError
 
 @pytest.fixture
 def client():

@@ -1,4 +1,4 @@
-# tests/test_smoke.py
+﻿# tests/test_smoke.py
 """
 End-to-end smoke test: source → review → report with mocked LLM and connectors.
 No live API calls, no network.
@@ -8,8 +8,8 @@ import pytest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 from typer.testing import CliRunner
-from job_agent.cli import app
-from job_agent.llm.client import LLMClient
+from prospector.cli import app
+from prospector.llm.client import LLMClient
 
 RUNNER = CliRunner()
 
@@ -80,17 +80,17 @@ def test_source_produces_live_report(tmp_path, cfg_file, bigset_csv_path, monkey
 
     fake_call, fake_call_json, fake_is_over_budget = _make_llm_mocks()
 
-    from job_agent.models import RawResult
+    from prospector.models import RawResult
     fake_ws = [RawResult(url="https://li.com/alice", title="Alice Smith CTO Acme", snippet="...")]
 
     fake_tailor_result = {"company": "Acme AI", "files": [], "ok": True}
 
-    with patch("job_agent.llm.client.OpenAI"), \
+    with patch("prospector.llm.client.OpenAI"), \
          patch.object(LLMClient, "call", fake_call), \
          patch.object(LLMClient, "call_json", fake_call_json), \
          patch.object(LLMClient, "is_over_budget", fake_is_over_budget), \
-         patch("job_agent.stages.people_finding.WebSearchConnector") as mock_ws, \
-         patch("job_agent.stages.review._tailor_and_compile", return_value=fake_tailor_result):
+         patch("prospector.stages.people_finding.WebSearchConnector") as mock_ws, \
+         patch("prospector.stages.review._tailor_and_compile", return_value=fake_tailor_result):
 
         mock_ws.return_value.search.return_value = fake_ws
         # 'a' accepts the match; \n flushes the prompt loop
@@ -110,17 +110,17 @@ def test_report_produces_markdown(tmp_path, cfg_file, bigset_csv_path, monkeypat
 
     fake_call, fake_call_json, fake_is_over_budget = _make_llm_mocks()
 
-    from job_agent.models import RawResult
+    from prospector.models import RawResult
     fake_ws = [RawResult(url="https://li.com/alice", title="Alice Smith CTO Acme", snippet="...")]
 
     fake_tailor = {"company": "Acme AI", "files": [], "ok": True}
 
-    with patch("job_agent.llm.client.OpenAI"), \
+    with patch("prospector.llm.client.OpenAI"), \
          patch.object(LLMClient, "call", fake_call), \
          patch.object(LLMClient, "call_json", fake_call_json), \
          patch.object(LLMClient, "is_over_budget", fake_is_over_budget), \
-         patch("job_agent.stages.people_finding.WebSearchConnector") as mock_ws, \
-         patch("job_agent.stages.review._tailor_and_compile", return_value=fake_tailor):
+         patch("prospector.stages.people_finding.WebSearchConnector") as mock_ws, \
+         patch("prospector.stages.review._tailor_and_compile", return_value=fake_tailor):
 
         mock_ws.return_value.search.return_value = fake_ws
 
@@ -132,7 +132,7 @@ def test_report_produces_markdown(tmp_path, cfg_file, bigset_csv_path, monkeypat
         with patch.object(LLMClient, "call", fake_call), \
              patch.object(LLMClient, "call_json", fake_call_json), \
              patch.object(LLMClient, "is_over_budget", fake_is_over_budget), \
-             patch("job_agent.stages.people_finding.WebSearchConnector") as mock_ws2:
+             patch("prospector.stages.people_finding.WebSearchConnector") as mock_ws2:
             mock_ws2.return_value.search.return_value = fake_ws
             result2 = RUNNER.invoke(app, ["report", "--config", cfg_file])
 

@@ -1,4 +1,4 @@
-# tests/test_compiler.py
+﻿# tests/test_compiler.py
 """Tests for the PDF/DOCX compiler helpers (all subprocess calls mocked)."""
 import subprocess
 from pathlib import Path
@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from job_agent.output.compiler import (
+from prospector.output.compiler import (
     _extract_page_count,
     compile_docx,
     compile_pdf,
@@ -66,7 +66,7 @@ def test_try_compile_pdf_success_one_page(tmp_path):
         call_count[0] += 1
         return r
 
-    with patch("job_agent.output.compiler.subprocess.run", side_effect=fake_run):
+    with patch("prospector.output.compiler.subprocess.run", side_effect=fake_run):
         ok, pages, error_log = try_compile_pdf(FAKE_LATEX, pdf_out)
 
     assert ok is True
@@ -92,7 +92,7 @@ def test_try_compile_pdf_returns_page_count(tmp_path):
         r.stderr = b""
         return r
 
-    with patch("job_agent.output.compiler.subprocess.run", side_effect=fake_run):
+    with patch("prospector.output.compiler.subprocess.run", side_effect=fake_run):
         ok, pages, error_log = try_compile_pdf(FAKE_LATEX, pdf_out)
 
     assert ok is True
@@ -106,7 +106,7 @@ def test_try_compile_pdf_compile_error(tmp_path):
     bad.stdout = b"! LaTeX Error: something broken"
     bad.stderr = b""
 
-    with patch("job_agent.output.compiler.subprocess.run", return_value=bad):
+    with patch("prospector.output.compiler.subprocess.run", return_value=bad):
         ok, pages, error_log = try_compile_pdf(FAKE_LATEX, pdf_out)
 
     assert ok is False
@@ -116,7 +116,7 @@ def test_try_compile_pdf_compile_error(tmp_path):
 
 def test_try_compile_pdf_pdflatex_not_found(tmp_path):
     pdf_out = tmp_path / "resume.pdf"
-    with patch("job_agent.output.compiler.subprocess.run",
+    with patch("prospector.output.compiler.subprocess.run",
                side_effect=FileNotFoundError("pdflatex not found")):
         ok, pages, error_log = try_compile_pdf(FAKE_LATEX, pdf_out)
 
@@ -127,7 +127,7 @@ def test_try_compile_pdf_pdflatex_not_found(tmp_path):
 
 def test_try_compile_pdf_timeout(tmp_path):
     pdf_out = tmp_path / "resume.pdf"
-    with patch("job_agent.output.compiler.subprocess.run",
+    with patch("prospector.output.compiler.subprocess.run",
                side_effect=subprocess.TimeoutExpired("pdflatex", 60)):
         ok, pages, error_log = try_compile_pdf(FAKE_LATEX, pdf_out)
 
@@ -153,7 +153,7 @@ def test_compile_pdf_success(tmp_path):
         r.stderr = b""
         return r
 
-    with patch("job_agent.output.compiler.subprocess.run", side_effect=fake_run):
+    with patch("prospector.output.compiler.subprocess.run", side_effect=fake_run):
         result = compile_pdf(FAKE_LATEX, pdf_out)
 
     assert result is True
@@ -162,7 +162,7 @@ def test_compile_pdf_success(tmp_path):
 
 def test_compile_pdf_pdflatex_not_found(tmp_path):
     pdf_out = tmp_path / "resume.pdf"
-    with patch("job_agent.output.compiler.subprocess.run",
+    with patch("prospector.output.compiler.subprocess.run",
                side_effect=FileNotFoundError("pdflatex not found")):
         result = compile_pdf(FAKE_LATEX, pdf_out)
 
@@ -177,7 +177,7 @@ def test_compile_pdf_nonzero_exit(tmp_path):
     bad.stdout = b"! LaTeX Error"
     bad.stderr = b""
 
-    with patch("job_agent.output.compiler.subprocess.run", return_value=bad):
+    with patch("prospector.output.compiler.subprocess.run", return_value=bad):
         result = compile_pdf(FAKE_LATEX, pdf_out)
 
     assert result is False
@@ -185,7 +185,7 @@ def test_compile_pdf_nonzero_exit(tmp_path):
 
 def test_compile_pdf_timeout(tmp_path):
     pdf_out = tmp_path / "resume.pdf"
-    with patch("job_agent.output.compiler.subprocess.run",
+    with patch("prospector.output.compiler.subprocess.run",
                side_effect=subprocess.TimeoutExpired("pdflatex", 60)):
         result = compile_pdf(FAKE_LATEX, pdf_out)
 

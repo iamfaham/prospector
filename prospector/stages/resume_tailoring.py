@@ -1,12 +1,12 @@
-# job_agent/stages/resume_tailoring.py
+﻿# prospector/stages/resume_tailoring.py
 import logging
 from pathlib import Path
 
-from job_agent.config import MatchingConfig, RoleVariantConfig
-from job_agent.llm.client import LLMClient, LLMError
-from job_agent.llm.prompts import resume_tailor_latex_prompt, resume_tailor_prompt
-from job_agent.models import ResumeDraft
-from job_agent.store import Store
+from prospector.config import MatchingConfig, RoleVariantConfig
+from prospector.llm.client import LLMClient, LLMError
+from prospector.llm.prompts import resume_tailor_latex_prompt, resume_tailor_prompt
+from prospector.models import ResumeDraft
+from prospector.store import Store
 
 logger = logging.getLogger(__name__)
 

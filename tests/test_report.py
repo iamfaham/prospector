@@ -1,11 +1,11 @@
-# tests/test_report.py
+﻿# tests/test_report.py
 import csv
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from job_agent.stages.report import _resume_stem, _title_slug, run_report
-from job_agent.store import Store
-from job_agent.models import Company, RoleVariant, Match, Contact, OutreachDraft, DraftType, ResumeDraft
+from prospector.stages.report import _resume_stem, _title_slug, run_report
+from prospector.store import Store
+from prospector.models import Company, RoleVariant, Match, Contact, OutreachDraft, DraftType, ResumeDraft
 
 
 def _full_store(tmp_path):
@@ -93,7 +93,7 @@ def test_latex_resume_writes_tex_always(tmp_path):
     store = _latex_store(tmp_path)
 
     # try_compile_pdf returns (False, 0, "not installed") — pdflatex absent
-    with patch("job_agent.stages.report.try_compile_pdf", return_value=(False, 0, "pdflatex not installed")):
+    with patch("prospector.stages.report.try_compile_pdf", return_value=(False, 0, "pdflatex not installed")):
         paths = run_report(store, output_dir=str(tmp_path / "reports"), candidate_name="Faham")
 
     report_dir = Path(paths["markdown"]).parent
@@ -110,8 +110,8 @@ def test_latex_compile_success_produces_pdf_and_docx(tmp_path):
     """When pdflatex succeeds (1 page) and pandoc succeeds, both files appear."""
     store = _latex_store(tmp_path)
 
-    with patch("job_agent.stages.report.try_compile_pdf", return_value=(True, 1, "")) as mpdf, \
-         patch("job_agent.stages.report.compile_docx", return_value=True) as mdocx:
+    with patch("prospector.stages.report.try_compile_pdf", return_value=(True, 1, "")) as mpdf, \
+         patch("prospector.stages.report.compile_docx", return_value=True) as mdocx:
         paths = run_report(store, output_dir=str(tmp_path / "reports"), candidate_name="Faham")
 
     report_dir = Path(paths["markdown"]).parent
@@ -137,8 +137,8 @@ def test_compile_error_triggers_llm_fix_and_retry(tmp_path):
             return (False, 0, "! LaTeX Error: undefined control sequence")
         return (True, 1, "")
 
-    with patch("job_agent.stages.report.try_compile_pdf", side_effect=fake_compile), \
-         patch("job_agent.stages.report.compile_docx", return_value=False):
+    with patch("prospector.stages.report.try_compile_pdf", side_effect=fake_compile), \
+         patch("prospector.stages.report.compile_docx", return_value=False):
         run_report(store, output_dir=str(tmp_path / "reports"), candidate_name="Faham", llm=llm)
 
     # LLM was called once to fix the error
@@ -166,8 +166,8 @@ def test_overflow_triggers_llm_condense_and_retry(tmp_path):
             return (True, 2, "")  # first attempt: 2 pages
         return (True, 1, "")     # second attempt: 1 page
 
-    with patch("job_agent.stages.report.try_compile_pdf", side_effect=fake_compile), \
-         patch("job_agent.stages.report.compile_docx", return_value=False):
+    with patch("prospector.stages.report.try_compile_pdf", side_effect=fake_compile), \
+         patch("prospector.stages.report.compile_docx", return_value=False):
         run_report(store, output_dir=str(tmp_path / "reports"), candidate_name="Faham", llm=llm)
 
     assert llm.call.call_count == 1
@@ -181,7 +181,7 @@ def test_no_llm_accepts_compile_failure_gracefully(tmp_path):
     """Without LLM, a compile failure just skips PDF — no crash."""
     store = _latex_store(tmp_path)
 
-    with patch("job_agent.stages.report.try_compile_pdf", return_value=(False, 0, "error")):
+    with patch("prospector.stages.report.try_compile_pdf", return_value=(False, 0, "error")):
         paths = run_report(store, output_dir=str(tmp_path / "reports"), candidate_name="Faham")
 
     assert Path(paths["markdown"]).exists()
@@ -191,8 +191,8 @@ def test_no_llm_accepts_multipage_pdf(tmp_path):
     """Without LLM, a 2-page PDF is accepted rather than retried."""
     store = _latex_store(tmp_path)
 
-    with patch("job_agent.stages.report.try_compile_pdf", return_value=(True, 2, "")), \
-         patch("job_agent.stages.report.compile_docx", return_value=False):
+    with patch("prospector.stages.report.try_compile_pdf", return_value=(True, 2, "")), \
+         patch("prospector.stages.report.compile_docx", return_value=False):
         paths = run_report(store, output_dir=str(tmp_path / "reports"), candidate_name="Faham")
 
     md = Path(paths["markdown"]).read_text()

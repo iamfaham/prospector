@@ -1,9 +1,9 @@
-import json
+﻿import json
 import sqlite3
 from contextlib import contextmanager
 from typing import Generator, Optional
 
-from job_agent.models import (
+from prospector.models import (
     Company, Confidence, Contact, DraftType, Job, Match, MatchStatus,
     OutreachDraft, ResumeDraft, RoleVariant,
 )
@@ -79,7 +79,7 @@ CREATE TABLE IF NOT EXISTS resume_drafts (
 
 
 class Store:
-    def __init__(self, db_path: str = "job_agent.db"):
+    def __init__(self, db_path: str = "prospector.db"):
         self.db_path = db_path
         self._init_db()
 
@@ -242,7 +242,7 @@ class Store:
                 JOIN role_variants rv ON rv.id = m.role_variant_id
                 LEFT JOIN jobs j ON j.id = m.job_id
                 WHERE m.score >= ? AND m.status = 'new'
-                ORDER BY m.score DESC
+                ORDER BY c.funding_date DESC NULLS LAST, m.score DESC
             """, (threshold,)).fetchall()
             return [dict(r) for r in rows]
 
@@ -265,7 +265,7 @@ class Store:
                   AND NOT EXISTS (
                     SELECT 1 FROM resume_drafts rd WHERE rd.match_id = m.id
                   )
-                ORDER BY m.score DESC
+                ORDER BY c.funding_date DESC NULLS LAST, m.score DESC
             """, (threshold,)).fetchall()
             return [dict(r) for r in rows]
 
@@ -332,7 +332,7 @@ class Store:
             rows = conn.execute("""
                 SELECT
                     m.id AS match_id, m.score, m.reasoning, m.status, m.scored_at,
-                    c.name AS company_name, c.funding_stage, c.funding_date,
+                    c.name AS company_name, c.source_url, c.funding_stage, c.funding_amount, c.funding_date,
                     j.title AS job_title, j.url AS job_url,
                     rv.name AS role_variant_name,
                     ct.name AS contact_name, ct.title AS contact_title,
@@ -346,7 +346,7 @@ class Store:
                 LEFT JOIN contacts ct ON ct.company_id = m.company_id
                 LEFT JOIN outreach_drafts od ON od.match_id = m.id
                 LEFT JOIN resume_drafts rd ON rd.match_id = m.id
-                ORDER BY m.score DESC
+                ORDER BY c.funding_date DESC NULLS LAST, m.score DESC
             """).fetchall()
             return [dict(r) for r in rows]
 

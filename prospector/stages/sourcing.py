@@ -1,12 +1,12 @@
-# job_agent/stages/sourcing.py
+﻿# prospector/stages/sourcing.py
 import logging
 from datetime import datetime, timedelta, timezone
-from job_agent.config import RoleVariantConfig, SourcingConfig
-from job_agent.connectors.base import SourceConnector
-from job_agent.llm.client import LLMClient, LLMError
-from job_agent.llm.prompts import sourcing_query_prompt, sourcing_extract_prompt
-from job_agent.models import Company, Job
-from job_agent.store import Store
+from prospector.config import RoleVariantConfig, SourcingConfig
+from prospector.connectors.base import SourceConnector
+from prospector.llm.client import LLMClient, LLMError
+from prospector.llm.prompts import sourcing_query_prompt, sourcing_extract_prompt
+from prospector.models import Company, Job
+from prospector.store import Store
 
 logger = logging.getLogger(__name__)
 

@@ -1,14 +1,14 @@
-# tests/test_review.py
+﻿# tests/test_review.py
 """Tests for the interactive review stage."""
 import pytest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from job_agent.config import MatchingConfig, RoleVariantConfig
-from job_agent.llm.client import LLMClient
-from job_agent.models import Company, Match, MatchStatus, RoleVariant
-from job_agent.stages.review import run_review
-from job_agent.store import Store
+from prospector.config import MatchingConfig, RoleVariantConfig
+from prospector.llm.client import LLMClient
+from prospector.models import Company, Match, MatchStatus, RoleVariant
+from prospector.stages.review import run_review
+from prospector.store import Store
 
 _RV_CFG = RoleVariantConfig(name="be", resume="r.txt", keywords=["python"], seniority="mid")
 
@@ -39,7 +39,7 @@ def test_accept_submits_tailoring(tmp_path):
     store, rv_id, cid, rv_map, latex_sources, resume_texts = _setup(tmp_path)
     llm = _mock_llm()
 
-    with patch("job_agent.stages.review._tailor_and_compile", return_value=_TAILOR_OK) as mock_t, \
+    with patch("prospector.stages.review._tailor_and_compile", return_value=_TAILOR_OK) as mock_t, \
          patch("builtins.input", return_value="a"):
         counts = run_review(store, rv_map, latex_sources, resume_texts,
                             MatchingConfig(), llm, "Faham", str(tmp_path / "reports"))
@@ -56,7 +56,7 @@ def test_reject_updates_status(tmp_path):
     store, rv_id, cid, rv_map, latex_sources, resume_texts = _setup(tmp_path)
     llm = _mock_llm()
 
-    with patch("job_agent.stages.review._tailor_and_compile", return_value=_TAILOR_OK) as mock_t, \
+    with patch("prospector.stages.review._tailor_and_compile", return_value=_TAILOR_OK) as mock_t, \
          patch("builtins.input", return_value="r"):
         counts = run_review(store, rv_map, latex_sources, resume_texts,
                             MatchingConfig(), llm, "Faham", str(tmp_path / "reports"))
@@ -71,7 +71,7 @@ def test_skip_leaves_status_new(tmp_path):
     store, rv_id, cid, rv_map, latex_sources, resume_texts = _setup(tmp_path)
     llm = _mock_llm()
 
-    with patch("job_agent.stages.review._tailor_and_compile", return_value=_TAILOR_OK), \
+    with patch("prospector.stages.review._tailor_and_compile", return_value=_TAILOR_OK), \
          patch("builtins.input", return_value="s"):
         counts = run_review(store, rv_map, latex_sources, resume_texts,
                             MatchingConfig(), llm, "Faham", str(tmp_path / "reports"))
@@ -90,7 +90,7 @@ def test_quit_stops_early(tmp_path):
     llm = _mock_llm()
 
     responses = iter(["q"])
-    with patch("job_agent.stages.review._tailor_and_compile", return_value=_TAILOR_OK), \
+    with patch("prospector.stages.review._tailor_and_compile", return_value=_TAILOR_OK), \
          patch("builtins.input", side_effect=responses):
         counts = run_review(store, rv_map, latex_sources, resume_texts,
                             MatchingConfig(), llm, "Faham", str(tmp_path / "reports"))
@@ -111,7 +111,7 @@ def test_live_report_written(tmp_path):
     llm = _mock_llm()
     reports_dir = tmp_path / "reports"
 
-    with patch("job_agent.stages.review._tailor_and_compile", return_value=_TAILOR_OK), \
+    with patch("prospector.stages.review._tailor_and_compile", return_value=_TAILOR_OK), \
          patch("builtins.input", return_value="a"):
         run_review(store, rv_map, latex_sources, resume_texts,
                    MatchingConfig(), llm, "Faham", str(reports_dir))

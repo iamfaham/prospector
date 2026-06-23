@@ -1,12 +1,12 @@
-# tests/test_sourcing.py
+﻿# tests/test_sourcing.py
 import json
 import pytest
 from unittest.mock import MagicMock
-from job_agent.stages.sourcing import run_sourcing
-from job_agent.store import Store
-from job_agent.llm.client import LLMClient
-from job_agent.config import RoleVariantConfig, SourcingConfig
-from job_agent.models import RawResult, RoleVariant
+from prospector.stages.sourcing import run_sourcing
+from prospector.store import Store
+from prospector.llm.client import LLMClient
+from prospector.config import RoleVariantConfig, SourcingConfig
+from prospector.models import RawResult, RoleVariant
 
 RV = RoleVariantConfig(name="be", resume="r.txt", keywords=["python"], seniority="mid")
 CFG = SourcingConfig(max_queries_per_role_per_run=2, funding_lookback_days=30)

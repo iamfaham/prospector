@@ -15,6 +15,6 @@ docs/
 .env
 
 # Runtime artifacts
-job_agent.db
+prospector.db
 reports/
 resumes/

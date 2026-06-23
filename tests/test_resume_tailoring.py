@@ -1,4 +1,4 @@
-# tests/test_resume_tailoring.py
+﻿# tests/test_resume_tailoring.py
 """Tests for resume tailoring stage and prompt."""
 import sqlite3
 import tempfile
@@ -7,11 +7,11 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from job_agent.config import MatchingConfig, RoleVariantConfig
-from job_agent.llm.prompts import resume_tailor_prompt
-from job_agent.models import Company, Job, Match, MatchStatus, ResumeDraft
-from job_agent.stages.resume_tailoring import run_resume_tailoring, tailor_resume
-from job_agent.store import Store
+from prospector.config import MatchingConfig, RoleVariantConfig
+from prospector.llm.prompts import resume_tailor_prompt
+from prospector.models import Company, Job, Match, MatchStatus, ResumeDraft
+from prospector.stages.resume_tailoring import run_resume_tailoring, tailor_resume
+from prospector.store import Store
 
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -39,7 +39,7 @@ def matching_cfg():
 @pytest.fixture()
 def seeded_store(store, role_variant_cfg):
     """Store with one company, one job, one high-scoring match."""
-    from job_agent.models import RoleVariant
+    from prospector.models import RoleVariant
     rv = RoleVariant(
         name=role_variant_cfg.name,
         resume_path=role_variant_cfg.resume,
@@ -165,7 +165,7 @@ def test_run_resume_tailoring_writes_to_store(seeded_store, role_variant_cfg, ma
 
 
 def test_run_resume_tailoring_skips_below_threshold(store, role_variant_cfg, matching_cfg):
-    from job_agent.models import RoleVariant
+    from prospector.models import RoleVariant
     rv = RoleVariant(name=role_variant_cfg.name, resume_path=role_variant_cfg.resume,
                      keywords=role_variant_cfg.keywords, seniority=role_variant_cfg.seniority)
     rv_id = store.upsert_role_variant(rv)

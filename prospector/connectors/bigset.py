@@ -1,8 +1,8 @@
-# job_agent/connectors/bigset.py
+﻿# prospector/connectors/bigset.py
 import csv
 import logging
 from pathlib import Path
-from job_agent.models import RawResult
+from prospector.models import RawResult
 
 logger = logging.getLogger(__name__)
 

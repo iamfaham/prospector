@@ -1,11 +1,11 @@
-# tests/test_matching.py
+﻿# tests/test_matching.py
 import pytest
 from unittest.mock import MagicMock
-from job_agent.stages.matching import run_matching, score_match
-from job_agent.store import Store
-from job_agent.llm.client import LLMClient, LLMError
-from job_agent.config import RoleVariantConfig, MatchingConfig
-from job_agent.models import Company, Job, RoleVariant
+from prospector.stages.matching import run_matching, score_match
+from prospector.store import Store
+from prospector.llm.client import LLMClient, LLMError
+from prospector.config import RoleVariantConfig, MatchingConfig
+from prospector.models import Company, Job, RoleVariant
 
 RV_CFG = RoleVariantConfig(name="be", resume="r.txt", keywords=["python"], seniority="mid")
 RESUME = "5 years Python backend engineer"

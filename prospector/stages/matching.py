@@ -1,13 +1,13 @@
-# job_agent/stages/matching.py
+﻿# prospector/stages/matching.py
 import logging
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from job_agent.config import RoleVariantConfig, MatchingConfig
-from job_agent.llm.client import LLMClient, LLMError
-from job_agent.llm.prompts import score_match_prompt
-from job_agent.models import Match
-from job_agent.store import Store
+from prospector.config import RoleVariantConfig, MatchingConfig
+from prospector.llm.client import LLMClient, LLMError
+from prospector.llm.prompts import score_match_prompt
+from prospector.models import Match
+from prospector.store import Store
 
 logger = logging.getLogger(__name__)
 

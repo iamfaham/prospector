@@ -1,6 +1,6 @@
-# job_agent/connectors/base.py
+﻿# prospector/connectors/base.py
 from typing import Protocol, runtime_checkable
-from job_agent.models import RawResult
+from prospector.models import RawResult
 
 
 @runtime_checkable

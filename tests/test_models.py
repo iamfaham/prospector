@@ -1,4 +1,4 @@
-from job_agent.models import (
+﻿from prospector.models import (
     Company, Job, RoleVariant, Match, Contact, OutreachDraft,
     RawResult, Score, MatchStatus, DraftType, Confidence,
 )

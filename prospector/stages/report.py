@@ -1,4 +1,4 @@
-# job_agent/stages/report.py
+﻿# prospector/stages/report.py
 import csv
 import logging
 import re
@@ -6,11 +6,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional
 
-from job_agent.output.compiler import compile_docx, try_compile_pdf
-from job_agent.store import Store
+from prospector.output.compiler import compile_docx, try_compile_pdf
+from prospector.store import Store
 
 if TYPE_CHECKING:
-    from job_agent.llm.client import LLMClient
+    from prospector.llm.client import LLMClient
 
 logger = logging.getLogger(__name__)
 
@@ -84,7 +84,7 @@ def _compile_with_fix(
     Returns (final_latex_src, list_of_relative_file_paths).
     """
     # Lazy import to avoid circular deps at module load time
-    from job_agent.llm.prompts import fix_latex_compile_error_prompt, fix_latex_overflow_prompt
+    from prospector.llm.prompts import fix_latex_compile_error_prompt, fix_latex_overflow_prompt
 
     src = latex_src
     pdf_path = resumes_dir / f"{stem}.pdf"
@@ -173,8 +173,12 @@ def _write_markdown(rows: list[dict], path: Path) -> None:
         lines.append(f"**Role:** {row.get('role_variant_name', '?')}")
         if row.get("job_title"):
             lines.append(f"**Job:** [{row['job_title']}]({row.get('job_url', '#')})")
-        if row.get("funding_stage"):
-            lines.append(f"**Funding:** {row['funding_stage']} · {row.get('funding_date', '')}")
+        funding_parts = [row.get("funding_stage"), row.get("funding_amount"), row.get("funding_date")]
+        funding = " · ".join(p for p in funding_parts if p)
+        if funding:
+            lines.append(f"**Funding:** {funding}")
+        if row.get("source_url"):
+            lines.append(f"**Source:** {row['source_url']}")
         lines += ["", f"**Match reasoning:** {row.get('reasoning', '')}", ""]
         if row.get("contact_name"):
             lines.append(f"**Contact:** {row['contact_name']} ({row.get('contact_title', '')})")
@@ -199,8 +203,8 @@ def _write_markdown(rows: list[dict], path: Path) -> None:
 def _write_csv(rows: list[dict], path: Path) -> None:
     fields = [
         "company_name", "role_variant_name", "score", "job_title", "job_url",
-        "funding_stage", "funding_date", "contact_name", "contact_title",
-        "contact_email", "status",
+        "funding_stage", "funding_amount", "funding_date", "source_url",
+        "contact_name", "contact_title", "contact_email", "status",
     ]
     with open(path, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fields, extrasaction="ignore")

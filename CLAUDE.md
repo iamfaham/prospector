@@ -1,4 +1,4 @@
-# CLAUDE.md
+﻿# CLAUDE.md
 
 ## Project
 
@@ -7,8 +7,8 @@ Personal job-finding agent pipeline. Sources funded startups → scores against 
 ## Commands
 
 ```bash
-uv run job-agent                           # full pipeline
-uv run job-agent --config path/to/config.yaml
+uv run prospector                           # full pipeline
+uv run prospector --config path/to/config.yaml
 uv run pytest                      # 103 tests, all must pass
 uv run pytest tests/test_X.py -v   # single file
 ```
@@ -16,7 +16,7 @@ uv run pytest tests/test_X.py -v   # single file
 ## Architecture
 
 ```
-job_agent/
+prospector/
   cli.py                 # Typer entrypoint; orchestrates all stages
   config.py              # Pydantic config models; loaded from config.yaml
   models.py              # Core dataclasses (Company, Match, ResumeDraft, ...)

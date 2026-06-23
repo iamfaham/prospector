@@ -1,9 +1,9 @@
-# tests/test_connectors.py
+﻿# tests/test_connectors.py
 import pytest
-from job_agent.connectors.base import SourceConnector
-from job_agent.connectors.web_search import WebSearchConnector
-from job_agent.connectors.bigset import BigSetConnector
-from job_agent.models import RawResult
+from prospector.connectors.base import SourceConnector
+from prospector.connectors.web_search import WebSearchConnector
+from prospector.connectors.bigset import BigSetConnector
+from prospector.models import RawResult
 
 def test_web_search_connector_is_source_connector():
     c = WebSearchConnector(api_key="key", connector_type="funding_news")

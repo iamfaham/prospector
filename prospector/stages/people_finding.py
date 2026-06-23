@@ -1,14 +1,14 @@
-# job_agent/stages/people_finding.py
+﻿# prospector/stages/people_finding.py
 import logging
 import os
 from typing import Optional
 import httpx
-from job_agent.config import PeopleSearchConfig
-from job_agent.llm.client import LLMClient, LLMError
-from job_agent.llm.prompts import people_search_query_prompt, people_verify_prompt
-from job_agent.models import Contact, Confidence
-from job_agent.store import Store
-from job_agent.connectors.web_search import WebSearchConnector
+from prospector.config import PeopleSearchConfig
+from prospector.llm.client import LLMClient, LLMError
+from prospector.llm.prompts import people_search_query_prompt, people_verify_prompt
+from prospector.models import Contact, Confidence
+from prospector.store import Store
+from prospector.connectors.web_search import WebSearchConnector
 
 logger = logging.getLogger(__name__)
 _MAX_ATTEMPTS = 3

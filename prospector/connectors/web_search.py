@@ -1,10 +1,10 @@
-# job_agent/connectors/web_search.py
+﻿# prospector/connectors/web_search.py
 #
 # Uses Tavily Search API — 1,000 queries/month FREE, no credit card.
 # Sign up at https://app.tavily.com → copy your API key.
 import logging
 import httpx
-from job_agent.models import RawResult
+from prospector.models import RawResult
 
 logger = logging.getLogger(__name__)
 

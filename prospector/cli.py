@@ -1,4 +1,4 @@
-# job_agent/cli.py
+﻿# prospector/cli.py
 import logging
 import os
 import sys
@@ -15,19 +15,19 @@ if sys.platform == "win32":
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
-from job_agent.config import load_config
-from job_agent.llm.client import LLMClient
-from job_agent.models import RoleVariant
-from job_agent.resume import parse_resume, make_resume_summary
-from job_agent.store import Store
-from job_agent.connectors.bigset import BigSetConnector
-from job_agent.connectors.web_search import WebSearchConnector
-from job_agent.stages.matching import run_matching
-from job_agent.stages.outreach import run_outreach
-from job_agent.stages.people_finding import run_people_finding
-from job_agent.stages.report import run_report
-from job_agent.stages.review import run_review
-from job_agent.stages.sourcing import run_sourcing
+from prospector.config import load_config
+from prospector.llm.client import LLMClient
+from prospector.models import RoleVariant
+from prospector.resume import parse_resume, make_resume_summary
+from prospector.store import Store
+from prospector.connectors.bigset import BigSetConnector
+from prospector.connectors.web_search import WebSearchConnector
+from prospector.stages.matching import run_matching
+from prospector.stages.outreach import run_outreach
+from prospector.stages.people_finding import run_people_finding
+from prospector.stages.report import run_report
+from prospector.stages.review import run_review
+from prospector.stages.sourcing import run_sourcing
 
 app = typer.Typer(help="Job-Finding Agent: source → review → report")
 logging.basicConfig(
@@ -171,7 +171,7 @@ def compile(
     config: str = typer.Option("config.yaml", help="Path to config.yaml"),
 ) -> None:
     """Compile any .tex files in reports/resumes/ that are missing their PDF."""
-    from job_agent.output.compiler import try_compile_pdf, compile_docx
+    from prospector.output.compiler import try_compile_pdf, compile_docx
 
     resumes_dir = Path("reports/resumes")
     if not resumes_dir.exists():
@@ -203,7 +203,7 @@ def tailor(
     config: str = typer.Option("config.yaml", help="Path to config.yaml"),
 ) -> None:
     """Retry tailoring + compile for accepted matches missing resumes, then find contacts and draft outreach."""
-    from job_agent.stages.review import _tailor_and_compile, _write_live_report
+    from prospector.stages.review import _tailor_and_compile, _write_live_report
 
     cfg, store, llm, _ = _build(config)
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
@@ -271,7 +271,7 @@ def tailor(
     )
     typer.echo(f"  → {c['drafted']} drafted, {c['errors']} errors")
 
-    typer.echo("\n[tailor] Done. Run 'uv run job-agent report' to generate the final report.")
+    typer.echo("\n[tailor] Done. Run 'uv run prospector report' to generate the final report.")
 
 
 @app.command()

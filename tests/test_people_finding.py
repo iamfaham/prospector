@@ -1,12 +1,12 @@
-# tests/test_people_finding.py
+﻿# tests/test_people_finding.py
 import pytest
 from unittest.mock import MagicMock, patch
-from job_agent.stages.people_finding import run_people_finding
-from job_agent.store import Store
-from job_agent.llm.client import LLMClient
-from job_agent.config import PeopleSearchConfig
-from job_agent.models import Company, RoleVariant, Match, MatchStatus, Contact, Confidence
-from job_agent.connectors.web_search import WebSearchConnector
+from prospector.stages.people_finding import run_people_finding
+from prospector.store import Store
+from prospector.llm.client import LLMClient
+from prospector.config import PeopleSearchConfig
+from prospector.models import Company, RoleVariant, Match, MatchStatus, Contact, Confidence
+from prospector.connectors.web_search import WebSearchConnector
 
 CFG = PeopleSearchConfig(paid_api=None)
 
@@ -40,12 +40,12 @@ def test_finds_contact_and_writes_to_store(tmp_path, monkeypatch):
     store, cid = _populated_store(tmp_path, score=8)
     llm = _mock_llm(found=True)
     fake_connector = MagicMock(spec=WebSearchConnector)
-    from job_agent.models import RawResult
+    from prospector.models import RawResult
     fake_connector.search.return_value = [
         RawResult(url="https://li.com/alice", title="Alice Smith CTO Acme", snippet="...")
     ]
     monkeypatch.setenv("SERPER_API_KEY", "fake")
-    with patch("job_agent.stages.people_finding.WebSearchConnector", return_value=fake_connector):
+    with patch("prospector.stages.people_finding.WebSearchConnector", return_value=fake_connector):
         counts = run_people_finding(llm, store, CFG, threshold=7)
     assert counts["found"] == 1
     contact = store.get_contact_for_company(cid)
@@ -65,12 +65,12 @@ def test_not_found_records_zero(tmp_path, monkeypatch):
     store, cid = _populated_store(tmp_path, score=8)
     llm = _mock_llm(found=False)
     fake_connector = MagicMock(spec=WebSearchConnector)
-    from job_agent.models import RawResult
+    from prospector.models import RawResult
     fake_connector.search.return_value = [
         RawResult(url="https://x.com", title="unrelated", snippet="...")
     ]
     monkeypatch.setenv("SERPER_API_KEY", "fake")
-    with patch("job_agent.stages.people_finding.WebSearchConnector", return_value=fake_connector):
+    with patch("prospector.stages.people_finding.WebSearchConnector", return_value=fake_connector):
         counts = run_people_finding(llm, store, CFG, threshold=7)
     assert counts["not_found"] == 1
 

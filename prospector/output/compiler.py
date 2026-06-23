@@ -1,4 +1,4 @@
-# job_agent/output/compiler.py
+﻿# prospector/output/compiler.py
 """
 Compile LaTeX source to PDF (via pdflatex) and DOCX (via pdf2docx).
 

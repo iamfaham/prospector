@@ -1,6 +1,6 @@
-import pytest
-from job_agent.store import Store
-from job_agent.models import (
+﻿import pytest
+from prospector.store import Store
+from prospector.models import (
     Company, Job, RoleVariant, Match, Contact, OutreachDraft,
     MatchStatus, DraftType, Confidence,
 )
@@ -101,7 +101,7 @@ def test_get_accepted_matches_needing_draft(store):
     pending = store.get_accepted_matches_needing_draft(7)
     assert len(pending) == 1 and pending[0]["company_name"] == "Acme"
     # insert a draft — no longer returned
-    from job_agent.models import ResumeDraft
+    from prospector.models import ResumeDraft
     store.insert_resume_draft(ResumeDraft(match_id=mid, role_variant_id=rv_id,
                                           company_name="Acme", job_title=None, tailored_text="resume text"))
     assert store.get_accepted_matches_needing_draft(7) == []

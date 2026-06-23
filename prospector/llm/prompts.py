@@ -1,5 +1,5 @@
-from job_agent.config import RoleVariantConfig
-from job_agent.models import RawResult
+﻿from prospector.config import RoleVariantConfig
+from prospector.models import RawResult
 
 
 def sourcing_query_prompt(
@@ -294,33 +294,38 @@ def draft_message_prompt(
     score_reasoning: str,
     resume_summary: str,
 ) -> tuple[str, str]:
-    greeting = f"Hi {contact_name.split()[0]}," if contact_name else "Hi,"
-    recipient = (
-        f"to {contact_name} ({contact_title}) at" if contact_name and contact_title
-        else "to the team at"
-    )
-    if job_title:
-        angle = f"I'm reaching out about the {job_title} role"
-        style = "application blurb"
-    elif funding_signal:
-        angle = "Congratulations on your recent funding! I wanted to reach out"
-        style = "cold outreach referencing funding"
-    else:
-        angle = "I wanted to reach out"
-        style = "general cold outreach"
+    first_name = contact_name.split()[0] if contact_name else None
+    greeting = f"Hi {first_name}," if first_name else "Hi,"
 
     system = (
-        f"You write concise, personalized {style} messages for job outreach. "
-        "First person, professional but warm, max 150 words. No 'I hope this message "
-        "finds you well' or other filler. Never invent facts beyond what you're given."
+        "You write short, direct, human LinkedIn/email outreach messages for a job seeker. "
+        "The message must: (1) open with a one-line intro of who the candidate is and what they do, "
+        "(2) show genuine awareness of the company in one sentence, "
+        "(3) mention 2-3 specific skills from the candidate summary, "
+        "(4) end with a direct, low-pressure ask — are they hiring or open to a conversation. "
+        "Tone: confident, concise, conversational. NOT formal or corporate. "
+        "NO filler phrases ('I hope this finds you well', 'I came across', 'I am excited', "
+        "'Congratulations on', 'I wanted to reach out'). "
+        "NO generic platitudes. Sound like a real person, not a template. "
+        "Max 120 words total. Return only the message body — no subject line."
     )
+
+    contact_line = ""
+    if contact_name and contact_title:
+        contact_line = f"Recipient: {contact_name}, {contact_title} at {company_name}\n"
+    elif contact_name:
+        contact_line = f"Recipient: {contact_name} at {company_name}\n"
+
+    role_line = f"Role of interest: {job_title}\n" if job_title else ""
+    signal_line = f"Company context: {funding_signal[:300]}\n" if funding_signal else ""
+
     user = (
-        f"Write a cold outreach message {recipient} {company_name}.\n\n"
-        f"{greeting}\n\n"
-        f"Angle: {angle}.\n"
-        f"Why good fit: {score_reasoning}\n"
+        f"{contact_line}"
+        f"Company: {company_name}\n"
+        f"{role_line}"
+        f"{signal_line}"
         f"Candidate summary: {resume_summary}\n"
-        f"Context: {funding_signal or 'N/A'}\n\n"
-        "Write the full message text only (no subject line). Start with the greeting above."
+        f"Why good fit: {score_reasoning}\n\n"
+        f"Write the message starting with: {greeting}"
     )
     return system, user

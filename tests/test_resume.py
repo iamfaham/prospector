@@ -1,6 +1,6 @@
-import pytest
+﻿import pytest
 from pathlib import Path
-from job_agent.resume import parse_resume, make_resume_summary
+from prospector.resume import parse_resume, make_resume_summary
 
 
 def test_parse_txt_resume(sample_resume_path):

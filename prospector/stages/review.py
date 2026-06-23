@@ -1,4 +1,4 @@
-# job_agent/stages/review.py
+﻿# prospector/stages/review.py
 """
 Interactive company review with parallel background resume tailoring.
 
@@ -20,10 +20,10 @@ from typing import Optional
 
 import typer
 
-from job_agent.config import MatchingConfig, RoleVariantConfig
-from job_agent.llm.client import LLMClient, LLMError
-from job_agent.models import MatchStatus, ResumeDraft
-from job_agent.store import Store
+from prospector.config import MatchingConfig, RoleVariantConfig
+from prospector.llm.client import LLMClient, LLMError
+from prospector.models import MatchStatus, ResumeDraft
+from prospector.store import Store
 
 logger = logging.getLogger(__name__)
 
@@ -117,7 +117,7 @@ def run_review(
         f"{counts['rejected']} rejected, {counts['skipped']} skipped."
     )
     if counts["accepted"]:
-        typer.echo("[review] Next: uv run job-agent report")
+        typer.echo("[review] Next: uv run prospector report")
 
     return counts
 
@@ -175,8 +175,8 @@ def _tailor_and_compile(
     date_str: str,
 ) -> dict:
     """Runs in a worker thread. Opens its own Store connection."""
-    from job_agent.stages.resume_tailoring import tailor_resume
-    from job_agent.stages.report import _compile_with_fix, _resume_stem
+    from prospector.stages.resume_tailoring import tailor_resume
+    from prospector.stages.report import _compile_with_fix, _resume_stem
 
     thread_store = Store(db_path)
     company_name = match_dict["company_name"]

@@ -1,4 +1,4 @@
-from job_agent.llm.prompts import (
+﻿from prospector.llm.prompts import (
     sourcing_query_prompt,
     sourcing_extract_prompt,
     score_match_prompt,
@@ -10,8 +10,8 @@ from job_agent.llm.prompts import (
     fix_latex_overflow_prompt,
 )
 from datetime import datetime, timedelta, timezone
-from job_agent.config import RoleVariantConfig
-from job_agent.models import RawResult
+from prospector.config import RoleVariantConfig
+from prospector.models import RawResult
 
 RV = RoleVariantConfig(name="be", resume="r.txt", keywords=["python", "go"], seniority="mid-senior")
 RESULT = RawResult(url="https://tc.com/a", title="Acme raises $5M", snippet="Acme AI raised $5M Seed")

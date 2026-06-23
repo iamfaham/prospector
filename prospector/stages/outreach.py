@@ -1,10 +1,10 @@
-# job_agent/stages/outreach.py
+﻿# prospector/stages/outreach.py
 import logging
 from typing import Optional
-from job_agent.llm.client import LLMClient, LLMError
-from job_agent.llm.prompts import draft_message_prompt
-from job_agent.models import DraftType, OutreachDraft
-from job_agent.store import Store
+from prospector.llm.client import LLMClient, LLMError
+from prospector.llm.prompts import draft_message_prompt
+from prospector.models import DraftType, OutreachDraft
+from prospector.store import Store
 
 logger = logging.getLogger(__name__)
 

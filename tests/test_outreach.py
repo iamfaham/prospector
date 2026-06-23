@@ -1,10 +1,10 @@
-# tests/test_outreach.py
+﻿# tests/test_outreach.py
 import pytest
 from unittest.mock import MagicMock
-from job_agent.stages.outreach import run_outreach, draft_message
-from job_agent.store import Store
-from job_agent.llm.client import LLMClient, LLMError
-from job_agent.models import Company, RoleVariant, Match, MatchStatus, Contact, Job, DraftType
+from prospector.stages.outreach import run_outreach, draft_message
+from prospector.store import Store
+from prospector.llm.client import LLMClient, LLMError
+from prospector.models import Company, RoleVariant, Match, MatchStatus, Contact, Job, DraftType
 
 
 def _populated_store(tmp_path):

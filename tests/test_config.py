@@ -1,6 +1,6 @@
-import pytest
+﻿import pytest
 import textwrap
-from job_agent.config import load_config, Config
+from prospector.config import load_config, Config
 
 MINIMAL_YAML = textwrap.dedent("""\
     role_variants:
