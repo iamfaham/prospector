@@ -9,30 +9,34 @@ from job_agent.llm.prompts import (
     fix_latex_compile_error_prompt,
     fix_latex_overflow_prompt,
 )
+from datetime import datetime, timedelta, timezone
 from job_agent.config import RoleVariantConfig
 from job_agent.models import RawResult
 
 RV = RoleVariantConfig(name="be", resume="r.txt", keywords=["python", "go"], seniority="mid-senior")
 RESULT = RawResult(url="https://tc.com/a", title="Acme raises $5M", snippet="Acme AI raised $5M Seed")
 
+_TODAY = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+_CUTOFF = (datetime.now(timezone.utc) - timedelta(days=30)).strftime("%Y-%m-%d")
+
 def test_sourcing_query_prompt_returns_tuple():
-    system, user = sourcing_query_prompt(RV, "funding_news", [], 30, today="2026-06-23")
+    system, user = sourcing_query_prompt(RV, "funding_news", [], 30, today=_TODAY)
     assert isinstance(system, str) and len(system) > 10
     assert "python" in user or "go" in user
-    assert "2026-06-23" in system
+    assert _TODAY in system
 
 def test_sourcing_query_prompt_job_board():
-    system, user = sourcing_query_prompt(RV, "job_board", ["Acme"], 30, today="2026-06-23")
+    system, user = sourcing_query_prompt(RV, "job_board", ["Acme"], 30, today=_TODAY)
     assert isinstance(system, str) and isinstance(user, str)
 
 def test_sourcing_extract_prompt_returns_tuple():
     system, user = sourcing_extract_prompt(
-        RESULT, RV, "funding_news", 30, today="2026-06-23", cutoff_date="2026-05-24"
+        RESULT, RV, "funding_news", 30, today=_TODAY, cutoff_date=_CUTOFF
     )
     assert "json" in system.lower() or "JSON" in system
     assert RESULT.title in user
-    assert "2026-06-23" in system   # today in hard rule
-    assert "2026-05-24" in system   # cutoff in hard rule
+    assert _TODAY in system
+    assert _CUTOFF in system
 
 def test_score_match_prompt_contains_resume():
     system, user = score_match_prompt("My resume text", RV, "Company: Acme\nFunding: Seed")
