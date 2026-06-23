@@ -4,12 +4,12 @@ import os
 import sys
 from pathlib import Path
 from typing import Optional
+
 import typer
 from dotenv import load_dotenv
 
-load_dotenv()  # reads .env from cwd (or any parent) into os.environ
+load_dotenv()
 
-# Force UTF-8 output on Windows (prevents CP1252 encoding errors in terminal)
 if sys.platform == "win32":
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
@@ -25,10 +25,10 @@ from job_agent.stages.matching import run_matching
 from job_agent.stages.outreach import run_outreach
 from job_agent.stages.people_finding import run_people_finding
 from job_agent.stages.report import run_report
-from job_agent.stages.resume_tailoring import run_resume_tailoring
+from job_agent.stages.review import run_review
 from job_agent.stages.sourcing import run_sourcing
 
-app = typer.Typer(help="Job-Finding Agent: source startups → match → outreach")
+app = typer.Typer(help="Job-Finding Agent: source → review → report")
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 
 
@@ -62,13 +62,14 @@ def _build(config_path: str):
 
 
 @app.command()
-def run(
+def source(
     config: str = typer.Option("config.yaml", help="Path to config.yaml"),
-    dry_run: bool = typer.Option(False, "--dry-run", help="Dry run (no live API calls)"),
 ) -> None:
-    """Run all pipeline stages: source → match → people-find → outreach → report."""
+    """Source startups, score matches, then review interactively."""
     cfg, store, llm, connectors = _build(config)
 
+    rv_map: dict[int, object] = {}
+    latex_sources: dict[int, Optional[str]] = {}
     resume_texts: dict[str, str] = {}
 
     for rv_cfg in cfg.role_variants:
@@ -81,6 +82,15 @@ def run(
         rv_id = store.upsert_role_variant(rv)
         resume_text = parse_resume(rv_cfg.resume)
         resume_texts[rv_cfg.name] = resume_text
+        rv_map[rv_id] = rv_cfg
+
+        latex_src: Optional[str] = None
+        if rv_cfg.resume_latex:
+            try:
+                latex_src = Path(rv_cfg.resume_latex).read_text(encoding="utf-8")
+            except OSError as exc:
+                typer.echo(f"Warning: cannot read {rv_cfg.resume_latex}: {exc}", err=True)
+        latex_sources[rv_id] = latex_src
 
         typer.echo(f"[source] {rv_cfg.name} …")
         c = run_sourcing(
@@ -96,12 +106,68 @@ def run(
         )
         typer.echo(f"  → {c['scored']} scored, {c['errors']} errors")
 
-        typer.echo(f"[tailor] {rv_cfg.name} …")
-        c = run_resume_tailoring(
-            llm=llm, store=store, role_variant=rv_cfg,
-            role_variant_id=rv_id, resume_text=resume_text, config=cfg.matching,
+    typer.echo("\n[review] Starting interactive review…")
+    run_review(
+        store=store,
+        rv_map=rv_map,
+        latex_sources=latex_sources,
+        resume_texts=resume_texts,
+        matching_config=cfg.matching,
+        llm=llm,
+        candidate_name=cfg.candidate_name,
+        output_dir="reports",
+    )
+
+
+@app.command()
+def review(
+    config: str = typer.Option("config.yaml", help="Path to config.yaml"),
+) -> None:
+    """Resume interactive review of any still-pending matches."""
+    cfg, store, llm, _ = _build(config)
+
+    rv_map: dict[int, object] = {}
+    latex_sources: dict[int, Optional[str]] = {}
+    resume_texts: dict[str, str] = {}
+
+    for rv_cfg in cfg.role_variants:
+        rv = RoleVariant(
+            name=rv_cfg.name, resume_path=rv_cfg.resume,
+            keywords=rv_cfg.keywords, seniority=rv_cfg.seniority,
         )
-        typer.echo(f"  → {c['tailored']} tailored, {c['errors']} errors")
+        rv_id = store.upsert_role_variant(rv)
+        resume_texts[rv_cfg.name] = parse_resume(rv_cfg.resume)
+        rv_map[rv_id] = rv_cfg
+
+        latex_src: Optional[str] = None
+        if rv_cfg.resume_latex:
+            try:
+                latex_src = Path(rv_cfg.resume_latex).read_text(encoding="utf-8")
+            except OSError:
+                pass
+        latex_sources[rv_id] = latex_src
+
+    run_review(
+        store=store,
+        rv_map=rv_map,
+        latex_sources=latex_sources,
+        resume_texts=resume_texts,
+        matching_config=cfg.matching,
+        llm=llm,
+        candidate_name=cfg.candidate_name,
+        output_dir="reports",
+    )
+
+
+@app.command()
+def report(
+    config: str = typer.Option("config.yaml", help="Path to config.yaml"),
+) -> None:
+    """Find contacts, draft outreach, and generate final report for accepted matches."""
+    cfg, store, llm, _ = _build(config)
+
+    resume_texts = {rv.name: parse_resume(rv.resume) for rv in cfg.role_variants}
+    first_resume = next(iter(resume_texts.values()), "")
 
     typer.echo("[people-find] …")
     apollo_key: Optional[str] = os.environ.get("APOLLO_API_KEY")
@@ -113,7 +179,6 @@ def run(
     typer.echo(f"  → {c['found']} found, {c['not_found']} not found, {c['errors']} errors")
 
     typer.echo("[outreach] …")
-    first_resume = resume_texts[cfg.role_variants[0].name] if resume_texts else ""
     c = run_outreach(
         llm=llm, store=store,
         threshold=cfg.matching.score_threshold_for_outreach,

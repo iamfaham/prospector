@@ -55,11 +55,40 @@ def test_get_unscored_companies(store):
 def test_get_matches_above_threshold(store):
     rv_id = store.upsert_role_variant(RoleVariant(name="be", resume_path="r.txt", keywords=[], seniority="mid"))
     cid = store.upsert_company(Company(name="Acme", source_url="https://a.com"))
-    store.insert_match(Match(role_variant_id=rv_id, company_id=cid, score=8, reasoning="great"))
+    mid = store.insert_match(Match(role_variant_id=rv_id, company_id=cid, score=8, reasoning="great"))
     cid2 = store.upsert_company(Company(name="Beta", source_url="https://b.com"))
     store.insert_match(Match(role_variant_id=rv_id, company_id=cid2, score=3, reasoning="weak"))
+    # new matches are not returned — must be accepted first
+    assert store.get_matches_above_threshold(7) == []
+    store.update_match_status(mid, MatchStatus.ACCEPTED)
     above = store.get_matches_above_threshold(7)
     assert len(above) == 1 and above[0].score == 8
+
+
+def test_update_match_status(store):
+    rv_id = store.upsert_role_variant(RoleVariant(name="be", resume_path="r.txt", keywords=[], seniority="mid"))
+    cid = store.upsert_company(Company(name="Acme", source_url="https://a.com"))
+    mid = store.insert_match(Match(role_variant_id=rv_id, company_id=cid, score=8, reasoning="great"))
+    store.update_match_status(mid, MatchStatus.ACCEPTED)
+    above = store.get_matches_above_threshold(7)
+    assert above[0].status == MatchStatus.ACCEPTED
+    store.update_match_status(mid, MatchStatus.REJECTED)
+    assert store.get_matches_above_threshold(7) == []
+
+
+def test_get_matches_for_review(store):
+    rv_id = store.upsert_role_variant(RoleVariant(name="be", resume_path="r.txt", keywords=[], seniority="mid"))
+    cid = store.upsert_company(Company(name="Acme", source_url="https://a.com",
+                                       funding_stage="Seed", funding_amount="$5M"))
+    store.insert_match(Match(role_variant_id=rv_id, company_id=cid, score=8, reasoning="great"))
+    pending = store.get_matches_for_review(7)
+    assert len(pending) == 1
+    assert pending[0]["company_name"] == "Acme"
+    assert pending[0]["score"] == 8
+    assert pending[0]["funding_stage"] == "Seed"
+    # after accepting, it no longer shows in review
+    store.update_match_status(pending[0]["id"], MatchStatus.ACCEPTED)
+    assert store.get_matches_for_review(7) == []
 
 def test_get_contact_for_company(store):
     cid = store.upsert_company(Company(name="Acme", source_url="https://a.com"))

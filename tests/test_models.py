@@ -11,8 +11,8 @@ def test_company_defaults():
 
 def test_match_status_enum():
     assert MatchStatus.NEW.value == "new"
-    assert MatchStatus.REVIEWED.value == "reviewed"
-    assert MatchStatus.DISMISSED.value == "dismissed"
+    assert MatchStatus.ACCEPTED.value == "accepted"
+    assert MatchStatus.REJECTED.value == "rejected"
 
 def test_draft_type_enum():
     assert DraftType.COLD_OUTREACH.value == "cold_outreach"

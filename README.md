@@ -3,7 +3,7 @@
 A personal autonomous agent that sources recently-funded startups, scores them against your resume, finds the right contact, drafts outreach, and produces tailored PDF/DOCX resumes — all from a single command.
 
 ```
-uv run job-agent run
+uv run job-agent
 ```
 
 ---
@@ -54,7 +54,7 @@ cp .env.example .env
 #    Place your .tex at: resumes/resume.tex   (enables PDF/DOCX tailoring)
 
 # 4. Run
-uv run job-agent run
+uv run job-agent
 ```
 
 ---

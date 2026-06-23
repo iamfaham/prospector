@@ -89,9 +89,10 @@ class Store:
 
     @contextmanager
     def _conn(self) -> Generator[sqlite3.Connection, None, None]:
-        conn = sqlite3.connect(self.db_path)
+        conn = sqlite3.connect(self.db_path, timeout=10)
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA foreign_keys = ON")
+        conn.execute("PRAGMA journal_mode=WAL")
         try:
             yield conn
             conn.commit()
@@ -218,10 +219,38 @@ class Store:
             ).fetchall()
             return [_to_job(r) for r in rows]
 
+    def update_match_status(self, match_id: int, status: "MatchStatus") -> None:
+        with self._conn() as conn:
+            conn.execute(
+                "UPDATE matches SET status = ? WHERE id = ?",
+                (status.value, match_id),
+            )
+
+    def get_matches_for_review(self, threshold: int) -> list[dict]:
+        """Pending (new) matches above threshold with full company/job info for display."""
+        with self._conn() as conn:
+            rows = conn.execute("""
+                SELECT
+                    m.id, m.score, m.reasoning, m.role_variant_id,
+                    c.name AS company_name, c.source_url,
+                    c.funding_stage, c.funding_amount, c.funding_date,
+                    c.raw_signal_text,
+                    j.title AS job_title, j.url AS job_url, j.raw_text AS job_description,
+                    rv.name AS role_variant_name
+                FROM matches m
+                JOIN companies c ON c.id = m.company_id
+                JOIN role_variants rv ON rv.id = m.role_variant_id
+                LEFT JOIN jobs j ON j.id = m.job_id
+                WHERE m.score >= ? AND m.status = 'new'
+                ORDER BY m.score DESC
+            """, (threshold,)).fetchall()
+            return [dict(r) for r in rows]
+
     def get_matches_above_threshold(self, threshold: int) -> list[Match]:
+        """Accepted matches above threshold — used by people-finding and outreach."""
         with self._conn() as conn:
             rows = conn.execute(
-                "SELECT * FROM matches WHERE score >= ? AND status = 'new'",
+                "SELECT * FROM matches WHERE score >= ? AND status = 'accepted'",
                 (threshold,),
             ).fetchall()
             return [_to_match(r) for r in rows]
@@ -263,11 +292,11 @@ class Store:
                 return None  # already drafted for this match
 
     def get_matches_needing_resume_draft(self, threshold: int) -> list[Match]:
-        """Matches above threshold that don't yet have a resume_draft."""
+        """Accepted matches above threshold that don't yet have a resume_draft."""
         with self._conn() as conn:
             rows = conn.execute(
                 """SELECT m.* FROM matches m
-                   WHERE m.score >= ? AND m.status = 'new'
+                   WHERE m.score >= ? AND m.status = 'accepted'
                      AND NOT EXISTS (
                        SELECT 1 FROM resume_drafts rd WHERE rd.match_id = m.id
                      )""",

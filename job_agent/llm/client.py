@@ -1,5 +1,6 @@
 import json
 import logging
+import threading
 from openai import OpenAI
 
 logger = logging.getLogger(__name__)
@@ -18,18 +19,23 @@ class LLMClient:
         self.model = model
         self.max_total_calls = max_total_calls
         self._call_count = 0
+        self._lock = threading.Lock()
 
     @property
     def call_count(self) -> int:
-        return self._call_count
+        with self._lock:
+            return self._call_count
 
     def is_over_budget(self) -> bool:
-        return self._call_count >= self.max_total_calls
+        with self._lock:
+            return self._call_count >= self.max_total_calls
 
     def call(self, system: str, user: str, *, expect_json: bool = False) -> str:
         """Single LLM call with one automatic retry. Raises LLMError on failure."""
-        if self.is_over_budget():
-            raise LLMError(f"LLM call budget exhausted ({self.max_total_calls} calls)")
+        with self._lock:
+            if self._call_count >= self.max_total_calls:
+                raise LLMError(f"LLM call budget exhausted ({self.max_total_calls} calls)")
+            self._call_count += 1
 
         messages = [
             {"role": "system", "content": system},
@@ -38,8 +44,6 @@ class LLMClient:
         kwargs: dict = {"model": self.model, "messages": messages}
         if expect_json:
             kwargs["response_format"] = {"type": "json_object"}
-
-        self._call_count += 1
         try:
             resp = self._client.chat.completions.create(**kwargs)
             return resp.choices[0].message.content or ""
@@ -47,7 +51,8 @@ class LLMClient:
             logger.warning(f"LLM call failed, retrying once: {exc}")
             if self.is_over_budget():
                 raise LLMError("LLM budget exhausted during retry") from exc
-            self._call_count += 1
+            with self._lock:
+                self._call_count += 1
             try:
                 resp = self._client.chat.completions.create(**kwargs)
                 return resp.choices[0].message.content or ""

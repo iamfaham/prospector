@@ -7,8 +7,8 @@ Personal job-finding agent pipeline. Sources funded startups → scores against 
 ## Commands
 
 ```bash
-uv run job-agent run               # full pipeline
-uv run job-agent run --config path/to/config.yaml
+uv run job-agent                           # full pipeline
+uv run job-agent --config path/to/config.yaml
 uv run pytest                      # 103 tests, all must pass
 uv run pytest tests/test_X.py -v   # single file
 ```

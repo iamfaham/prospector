@@ -10,8 +10,8 @@ def _now() -> str:
 
 class MatchStatus(str, Enum):
     NEW = "new"
-    REVIEWED = "reviewed"
-    DISMISSED = "dismissed"
+    ACCEPTED = "accepted"
+    REJECTED = "rejected"
 
 
 class DraftType(str, Enum):

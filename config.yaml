@@ -16,7 +16,7 @@ matching:
 
 llm:
   provider: openrouter
-  model: anthropic/claude-sonnet-4-5
+  model: deepseek/deepseek-v4-flash
 
 people_search:
   paid_api: null

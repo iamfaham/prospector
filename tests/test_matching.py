@@ -33,8 +33,9 @@ def test_run_matching_scores_company(tmp_path):
     counts = run_matching(RV_CFG, rv_id, RESUME, llm, store, MatchingConfig())
     assert counts["scored"] == 1
     assert counts["errors"] == 0
-    matches = store.get_matches_above_threshold(7)
-    assert len(matches) == 1 and matches[0].score == 8
+    # matches land in 'new' status; get_matches_for_review returns them
+    pending = store.get_matches_for_review(7)
+    assert len(pending) == 1 and pending[0]["score"] == 8
 
 
 def test_run_matching_skips_already_scored(tmp_path):

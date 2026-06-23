@@ -5,7 +5,7 @@ from job_agent.stages.people_finding import run_people_finding
 from job_agent.store import Store
 from job_agent.llm.client import LLMClient
 from job_agent.config import PeopleSearchConfig
-from job_agent.models import Company, RoleVariant, Match, Contact, Confidence
+from job_agent.models import Company, RoleVariant, Match, MatchStatus, Contact, Confidence
 from job_agent.connectors.web_search import WebSearchConnector
 
 CFG = PeopleSearchConfig(paid_api=None)
@@ -17,7 +17,9 @@ def _populated_store(tmp_path, score=8):
         RoleVariant(name="be", resume_path="r.txt", keywords=[], seniority="mid")
     )
     cid = store.upsert_company(Company(name="Acme AI", source_url="https://a.com"))
-    store.insert_match(Match(role_variant_id=rv_id, company_id=cid, score=score, reasoning="good"))
+    mid = store.insert_match(Match(role_variant_id=rv_id, company_id=cid, score=score, reasoning="good"))
+    if score >= 7:
+        store.update_match_status(mid, MatchStatus.ACCEPTED)
     return store, cid
 
 

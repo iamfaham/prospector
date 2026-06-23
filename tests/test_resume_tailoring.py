@@ -59,7 +59,8 @@ def seeded_store(store, role_variant_cfg):
         role_variant_id=rv_id, company_id=company_id, job_id=job_id,
         score=8, reasoning="Strong match on Python and Go experience.",
     )
-    store.insert_match(match)
+    mid = store.insert_match(match)
+    store.update_match_status(mid, MatchStatus.ACCEPTED)
 
     return store, rv_id
 
