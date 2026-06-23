@@ -29,7 +29,8 @@ def test_sourcing_extract_prompt_returns_tuple():
     system, user = sourcing_extract_prompt(RESULT, RV, "funding_news", 30, today="2026-06-23")
     assert "json" in system.lower() or "JSON" in system
     assert RESULT.title in user
-    assert "2026-06-23" in system
+    assert "2026-06-23" in user
+    assert "3 months" in system.lower()
 
 def test_score_match_prompt_contains_resume():
     system, user = score_match_prompt("My resume text", RV, "Company: Acme\nFunding: Seed")

@@ -21,7 +21,7 @@ role_variants:
 
 sourcing:
   max_queries_per_role_per_run: 8
-  funding_lookback_days: 30
+  funding_lookback_days: 90
 
 matching:
   score_threshold_for_outreach: 7
