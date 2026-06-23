@@ -17,6 +17,7 @@ def run_sourcing(
     llm: LLMClient,
     store: Store,
     config: SourcingConfig,
+    today: str = "",
 ) -> dict[str, int]:
     """Agentic sourcing loop. Returns {"companies": N, "jobs": N, "errors": N}."""
     counts = {"companies": 0, "jobs": 0, "errors": 0}
@@ -32,7 +33,7 @@ def run_sourcing(
 
             try:
                 sys_p, usr_p = sourcing_query_prompt(
-                    role_variant, ctype, found_names, config.funding_lookback_days
+                    role_variant, ctype, found_names, config.funding_lookback_days, today
                 )
                 query = llm.call(sys_p, usr_p).strip().strip("\"'")
                 logger.info(f"[sourcing] {ctype} query {i+1}: {query}")
@@ -44,7 +45,7 @@ def run_sourcing(
                         break
                     try:
                         sys_e, usr_e = sourcing_extract_prompt(
-                            result, role_variant, ctype, config.funding_lookback_days
+                            result, role_variant, ctype, config.funding_lookback_days, today
                         )
                         extracted = llm.call_json(sys_e, usr_e)
 

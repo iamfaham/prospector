@@ -7,16 +7,19 @@ def sourcing_query_prompt(
     connector_type: str,
     already_found: list[str],
     funding_lookback_days: int,
+    today: str = "",
 ) -> tuple[str, str]:
     keywords = ", ".join(role_variant.keywords)
     already = ", ".join(already_found[-10:]) if already_found else "none yet"
+    date_note = f" Today's date is {today}." if today else ""
 
     system = (
         "You generate precise Google search queries to find job opportunities for a "
-        "specific candidate profile. Return ONLY the raw search query string — no "
-        "explanation, no quotes around it."
+        f"specific candidate profile.{date_note} Return ONLY the raw search query "
+        "string — no explanation, no quotes around it."
     )
 
+    year = today[:4] if today else "2026"
     if connector_type == "funding_news":
         user = (
             f"Generate a Google search query to find startups that raised funding in "
@@ -24,7 +27,7 @@ def sourcing_query_prompt(
             f"{keywords} ({role_variant.seniority}).\n\n"
             f"Already found (avoid): {already}\n\n"
             f"Be specific. Use site: or date filters where useful. "
-            f"Example style: 'site:techcrunch.com startup raises Series A 2026 {role_variant.keywords[0]}'"
+            f"Example style: 'site:techcrunch.com startup raises Series A {year} {role_variant.keywords[0]}'"
         )
     else:  # job_board
         kw0 = role_variant.keywords[0] if role_variant.keywords else "software engineer"
@@ -32,7 +35,7 @@ def sourcing_query_prompt(
             f"Generate a search query to find {role_variant.seniority} {kw0} job "
             f"openings at startups. Skills: {keywords}.\n\n"
             f"Already found companies (try others): {already}\n\n"
-            f"Example: 'site:wellfound.com \"{kw0}\" startup remote 2026'"
+            f"Example: 'site:wellfound.com \"{kw0}\" startup remote {year}'"
         )
     return system, user
 
@@ -42,11 +45,13 @@ def sourcing_extract_prompt(
     role_variant: RoleVariantConfig,
     connector_type: str,
     funding_lookback_days: int,
+    today: str = "",
 ) -> tuple[str, str]:
     keywords = ", ".join(role_variant.keywords)
+    date_note = f" Today's date is {today}, so 'recent' means within {funding_lookback_days} days of that." if today else f" Be strict: only funding from the last {funding_lookback_days} days is recent."
     system = (
         "You analyze search results to extract structured startup and job data. "
-        "Always return valid JSON. Be strict about recency."
+        f"Always return valid JSON.{date_note}"
     )
     user = (
         f"Analyze this search result and extract information.\n\n"

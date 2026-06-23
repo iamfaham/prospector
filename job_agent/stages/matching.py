@@ -92,9 +92,10 @@ def run_matching(
                 store.insert_match(match)
                 with lock:
                     counts["scored"] += 1
-                logger.info("[matching] %s: %d/10", label, match.score)
+                snippet = (match.reasoning or "")[:70]
+                logger.info("[matching] %s: %d/10 — %s", label, match.score, snippet)
             except LLMError as exc:
-                logger.error("[matching] %s: %s", label, exc)
+                logger.error("[matching] FAILED %s: %s", label, exc)
                 with lock:
                     counts["errors"] += 1
 

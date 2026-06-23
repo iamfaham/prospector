@@ -16,18 +16,20 @@ RV = RoleVariantConfig(name="be", resume="r.txt", keywords=["python", "go"], sen
 RESULT = RawResult(url="https://tc.com/a", title="Acme raises $5M", snippet="Acme AI raised $5M Seed")
 
 def test_sourcing_query_prompt_returns_tuple():
-    system, user = sourcing_query_prompt(RV, "funding_news", [], 30)
+    system, user = sourcing_query_prompt(RV, "funding_news", [], 30, today="2026-06-23")
     assert isinstance(system, str) and len(system) > 10
     assert "python" in user or "go" in user
+    assert "2026-06-23" in system
 
 def test_sourcing_query_prompt_job_board():
-    system, user = sourcing_query_prompt(RV, "job_board", ["Acme"], 30)
+    system, user = sourcing_query_prompt(RV, "job_board", ["Acme"], 30, today="2026-06-23")
     assert isinstance(system, str) and isinstance(user, str)
 
 def test_sourcing_extract_prompt_returns_tuple():
-    system, user = sourcing_extract_prompt(RESULT, RV, "funding_news", 30)
+    system, user = sourcing_extract_prompt(RESULT, RV, "funding_news", 30, today="2026-06-23")
     assert "json" in system.lower() or "JSON" in system
     assert RESULT.title in user
+    assert "2026-06-23" in system
 
 def test_score_match_prompt_contains_resume():
     system, user = score_match_prompt("My resume text", RV, "Company: Acme\nFunding: Seed")

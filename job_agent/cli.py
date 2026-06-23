@@ -2,6 +2,7 @@
 import logging
 import os
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -29,7 +30,11 @@ from job_agent.stages.review import run_review
 from job_agent.stages.sourcing import run_sourcing
 
 app = typer.Typer(help="Job-Finding Agent: source → review → report")
-logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s  %(message)s",
+    datefmt="%H:%M:%S",
+)
 
 
 def _build(config_path: str):
@@ -67,6 +72,7 @@ def source(
 ) -> None:
     """Source startups, score matches, then review interactively."""
     cfg, store, llm, connectors = _build(config)
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
     rv_map: dict[int, object] = {}
     latex_sources: dict[int, Optional[str]] = {}
@@ -96,6 +102,7 @@ def source(
         c = run_sourcing(
             role_variant=rv_cfg, role_variant_id=rv_id,
             connectors=connectors, llm=llm, store=store, config=cfg.sourcing,
+            today=today,
         )
         typer.echo(f"  → {c['companies']} companies, {c['jobs']} jobs, {c['errors']} errors")
 
