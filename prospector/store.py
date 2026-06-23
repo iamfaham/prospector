@@ -1,6 +1,7 @@
 ﻿import json
 import sqlite3
 from contextlib import contextmanager
+from datetime import datetime, timezone
 from typing import Generator, Optional
 
 from prospector.models import (
@@ -74,6 +75,10 @@ CREATE TABLE IF NOT EXISTS resume_drafts (
     tailored_text TEXT NOT NULL,
     generated_at TEXT NOT NULL,
     UNIQUE (match_id)
+);
+CREATE TABLE IF NOT EXISTS runs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    started_at TEXT NOT NULL
 );
 """
 
@@ -349,6 +354,22 @@ class Store:
                 ORDER BY c.funding_date DESC NULLS LAST, m.score DESC
             """).fetchall()
             return [dict(r) for r in rows]
+
+    def log_run(self) -> None:
+        with self._conn() as conn:
+            conn.execute(
+                "INSERT INTO runs (started_at) VALUES (?)",
+                (datetime.now(timezone.utc).isoformat(),),
+            )
+
+    def get_last_run_date(self) -> Optional[str]:
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT started_at FROM runs ORDER BY id DESC LIMIT 1"
+            ).fetchone()
+            if row:
+                return row["started_at"][:10]  # YYYY-MM-DD
+        return None
 
 
 def _to_company(r: sqlite3.Row) -> Company:

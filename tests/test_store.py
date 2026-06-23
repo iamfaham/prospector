@@ -113,3 +113,16 @@ def test_get_contact_for_company(store):
     store.insert_contact(Contact(company_id=cid, name="Alice", title="CEO"))
     c = store.get_contact_for_company(cid)
     assert c is not None and c.name == "Alice"
+
+
+def test_log_run_and_get_last_run_date(store):
+    # No runs yet
+    assert store.get_last_run_date() is None
+    # After first run
+    store.log_run()
+    d = store.get_last_run_date()
+    assert d is not None
+    assert len(d) == 10  # YYYY-MM-DD
+    # After second run, still returns a date (most recent)
+    store.log_run()
+    assert store.get_last_run_date() is not None
