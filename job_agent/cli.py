@@ -167,6 +167,82 @@ def review(
 
 
 @app.command()
+def tailor(
+    config: str = typer.Option("config.yaml", help="Path to config.yaml"),
+) -> None:
+    """Retry tailoring + compile for accepted matches missing resumes, then find contacts and draft outreach."""
+    from job_agent.stages.review import _tailor_and_compile, _write_live_report
+
+    cfg, store, llm, _ = _build(config)
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    threshold = cfg.matching.score_threshold_for_outreach
+
+    rv_map: dict[int, object] = {}
+    latex_sources: dict[int, Optional[str]] = {}
+    resume_texts: dict[str, str] = {}
+    for rv_cfg in cfg.role_variants:
+        rv = RoleVariant(
+            name=rv_cfg.name, resume_path=rv_cfg.resume,
+            keywords=rv_cfg.keywords, seniority=rv_cfg.seniority,
+        )
+        rv_id = store.upsert_role_variant(rv)
+        resume_texts[rv_cfg.name] = parse_resume(rv_cfg.resume)
+        rv_map[rv_id] = rv_cfg
+        latex_src: Optional[str] = None
+        if rv_cfg.resume_latex:
+            try:
+                latex_src = Path(rv_cfg.resume_latex).read_text(encoding="utf-8")
+            except OSError as exc:
+                typer.echo(f"Warning: cannot read {rv_cfg.resume_latex}: {exc}", err=True)
+        latex_sources[rv_id] = latex_src
+
+    resumes_dir = Path("reports/resumes")
+    resumes_dir.mkdir(parents=True, exist_ok=True)
+
+    pending = store.get_accepted_matches_needing_draft(threshold)
+    if pending:
+        typer.echo(f"[tailor] {len(pending)} accepted match(es) need resumes …")
+        tailor_results: list[dict] = []
+        for match in pending:
+            rv_cfg = rv_map.get(match["role_variant_id"])
+            if rv_cfg is None:
+                typer.echo(f"  ! No role variant config for match {match['id']}, skipping")
+                continue
+            typer.echo(f"  → {match['company_name']} ({match['role_variant_name']}) …")
+            result = _tailor_and_compile(
+                match, rv_cfg, latex_sources.get(match["role_variant_id"]),
+                resume_texts.get(rv_cfg.name, ""),
+                store.db_path, llm, resumes_dir, cfg.candidate_name, today,
+            )
+            tailor_results.append(result)
+            icon = "✓" if result.get("ok") else "✗"
+            files = result.get("files", [])
+            detail = ", ".join(Path(f).name for f in files) if files else result.get("error", "no output")
+            typer.echo(f"  {icon} {result['company']}: {detail}")
+        _write_live_report(store, "reports", tailor_results)
+    else:
+        typer.echo("[tailor] All accepted matches already have resumes.")
+
+    typer.echo("[people-find] …")
+    apollo_key: Optional[str] = os.environ.get("APOLLO_API_KEY")
+    c = run_people_finding(
+        llm=llm, store=store, config=cfg.people_search,
+        threshold=threshold, apollo_api_key=apollo_key,
+    )
+    typer.echo(f"  → {c['found']} found, {c['not_found']} not found, {c['errors']} errors")
+
+    typer.echo("[outreach] …")
+    first_resume = next(iter(resume_texts.values()), "")
+    c = run_outreach(
+        llm=llm, store=store, threshold=threshold,
+        resume_summary=make_resume_summary(first_resume),
+    )
+    typer.echo(f"  → {c['drafted']} drafted, {c['errors']} errors")
+
+    typer.echo("\n[tailor] Done. Run 'uv run job-agent report' to generate the final report.")
+
+
+@app.command()
 def report(
     config: str = typer.Option("config.yaml", help="Path to config.yaml"),
 ) -> None:

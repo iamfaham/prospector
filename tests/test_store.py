@@ -90,6 +90,23 @@ def test_get_matches_for_review(store):
     store.update_match_status(pending[0]["id"], MatchStatus.ACCEPTED)
     assert store.get_matches_for_review(7) == []
 
+def test_get_accepted_matches_needing_draft(store):
+    rv_id = store.upsert_role_variant(RoleVariant(name="be", resume_path="r.txt", keywords=[], seniority="mid"))
+    cid = store.upsert_company(Company(name="Acme", source_url="https://a.com"))
+    mid = store.insert_match(Match(role_variant_id=rv_id, company_id=cid, score=8, reasoning="good"))
+    # new status — not returned
+    assert store.get_accepted_matches_needing_draft(7) == []
+    store.update_match_status(mid, MatchStatus.ACCEPTED)
+    # accepted, no draft yet — returned
+    pending = store.get_accepted_matches_needing_draft(7)
+    assert len(pending) == 1 and pending[0]["company_name"] == "Acme"
+    # insert a draft — no longer returned
+    from job_agent.models import ResumeDraft
+    store.insert_resume_draft(ResumeDraft(match_id=mid, role_variant_id=rv_id,
+                                          company_name="Acme", job_title=None, tailored_text="resume text"))
+    assert store.get_accepted_matches_needing_draft(7) == []
+
+
 def test_get_contact_for_company(store):
     cid = store.upsert_company(Company(name="Acme", source_url="https://a.com"))
     assert store.get_contact_for_company(cid) is None

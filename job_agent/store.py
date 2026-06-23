@@ -246,6 +246,29 @@ class Store:
             """, (threshold,)).fetchall()
             return [dict(r) for r in rows]
 
+    def get_accepted_matches_needing_draft(self, threshold: int) -> list[dict]:
+        """Accepted matches above threshold that have no resume_draft yet — full join for tailoring."""
+        with self._conn() as conn:
+            rows = conn.execute("""
+                SELECT
+                    m.id, m.score, m.reasoning, m.role_variant_id,
+                    c.name AS company_name, c.source_url,
+                    c.funding_stage, c.funding_amount, c.funding_date,
+                    c.raw_signal_text,
+                    j.title AS job_title, j.url AS job_url, j.raw_text AS job_description,
+                    rv.name AS role_variant_name
+                FROM matches m
+                JOIN companies c ON c.id = m.company_id
+                JOIN role_variants rv ON rv.id = m.role_variant_id
+                LEFT JOIN jobs j ON j.id = m.job_id
+                WHERE m.score >= ? AND m.status = 'accepted'
+                  AND NOT EXISTS (
+                    SELECT 1 FROM resume_drafts rd WHERE rd.match_id = m.id
+                  )
+                ORDER BY m.score DESC
+            """, (threshold,)).fetchall()
+            return [dict(r) for r in rows]
+
     def get_matches_above_threshold(self, threshold: int) -> list[Match]:
         """Accepted matches above threshold — used by people-finding and outreach."""
         with self._conn() as conn:
