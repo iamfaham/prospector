@@ -1,5 +1,6 @@
 # job_agent/stages/sourcing.py
 import logging
+from datetime import datetime, timedelta, timezone
 from job_agent.config import RoleVariantConfig, SourcingConfig
 from job_agent.connectors.base import SourceConnector
 from job_agent.llm.client import LLMClient, LLMError
@@ -22,6 +23,9 @@ def run_sourcing(
     """Agentic sourcing loop. Returns {"companies": N, "jobs": N, "errors": N}."""
     counts = {"companies": 0, "jobs": 0, "errors": 0}
     found_names: list[str] = []
+    cutoff_date = (
+        datetime.now(timezone.utc) - timedelta(days=config.funding_lookback_days)
+    ).strftime("%Y-%m-%d")
 
     for connector in connectors:
         ctype = connector.connector_type
@@ -33,7 +37,7 @@ def run_sourcing(
 
             try:
                 sys_p, usr_p = sourcing_query_prompt(
-                    role_variant, ctype, found_names, config.funding_lookback_days, today
+                    role_variant, ctype, found_names, config.funding_lookback_days, today, cutoff_date
                 )
                 query = llm.call(sys_p, usr_p).strip().strip("\"'")
                 logger.info(f"[sourcing] {ctype} query {i+1}: {query}")
@@ -45,7 +49,7 @@ def run_sourcing(
                         break
                     try:
                         sys_e, usr_e = sourcing_extract_prompt(
-                            result, role_variant, ctype, config.funding_lookback_days, today
+                            result, role_variant, ctype, config.funding_lookback_days, today, cutoff_date
                         )
                         extracted = llm.call_json(sys_e, usr_e)
 

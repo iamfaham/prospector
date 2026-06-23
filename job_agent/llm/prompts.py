@@ -8,6 +8,7 @@ def sourcing_query_prompt(
     already_found: list[str],
     funding_lookback_days: int,
     today: str = "",
+    cutoff_date: str = "",
 ) -> tuple[str, str]:
     keywords = ", ".join(role_variant.keywords)
     already = ", ".join(already_found[-10:]) if already_found else "none yet"
@@ -20,11 +21,11 @@ def sourcing_query_prompt(
     )
 
     year = today[:4] if today else "2026"
+    since = f"since {cutoff_date}" if cutoff_date else f"in the last {funding_lookback_days} days"
     if connector_type == "funding_news":
         user = (
-            f"Generate a Google search query to find startups that raised funding in "
-            f"the last 3 months (no older), likely to hire someone with: "
-            f"{keywords} ({role_variant.seniority}).\n\n"
+            f"Generate a Google search query to find startups that raised funding {since}, "
+            f"likely to hire someone with: {keywords} ({role_variant.seniority}).\n\n"
             f"Already found (avoid): {already}\n\n"
             f"Be specific. Use site: or date filters to target recent results only. "
             f"Example style: 'site:techcrunch.com startup raises Series A {year} {role_variant.keywords[0]}'"
@@ -33,7 +34,7 @@ def sourcing_query_prompt(
         kw0 = role_variant.keywords[0] if role_variant.keywords else "software engineer"
         user = (
             f"Generate a search query to find {role_variant.seniority} {kw0} job "
-            f"openings at startups posted in the last 3 months. Skills: {keywords}.\n\n"
+            f"openings at startups posted {since}. Skills: {keywords}.\n\n"
             f"Already found companies (try others): {already}\n\n"
             f"Example: 'site:wellfound.com \"{kw0}\" startup remote {year}'"
         )
@@ -46,26 +47,35 @@ def sourcing_extract_prompt(
     connector_type: str,
     funding_lookback_days: int,
     today: str = "",
+    cutoff_date: str = "",
 ) -> tuple[str, str]:
     keywords = ", ".join(role_variant.keywords)
-    cutoff = f"within the last {funding_lookback_days} days (max 3 months) of {today}" if today else f"within the last {funding_lookback_days} days"
+    if cutoff_date and today:
+        date_rule = (
+            f"HARD RULE: today is {today}. Any funding round or job posting dated "
+            f"before {cutoff_date} is too old — set relevant=false immediately."
+        )
+    else:
+        date_rule = (
+            f"HARD RULE: only accept funding or postings from the last {funding_lookback_days} days. "
+            f"Anything older — set relevant=false immediately."
+        )
     system = (
         "You analyze search results to extract structured startup and job data. "
-        "Always return valid JSON. "
-        f"HARD RULE: any funding news or job posting older than 3 months is too stale — "
-        f"set relevant=false immediately, do not extract it."
+        f"Always return valid JSON. {date_rule}"
     )
+    cutoff_display = f"on or after {cutoff_date}" if cutoff_date else f"within last {funding_lookback_days} days"
     user = (
         f"Analyze this search result and extract information.\n\n"
         f"Title: {result.title}\nURL: {result.url}\nSnippet: {result.snippet}\n\n"
         f"Target skills: {keywords} ({role_variant.seniority})\n"
         f"Source type: {'funding news' if connector_type == 'funding_news' else 'job board'}\n"
-        f"Today: {today or 'unknown'} — only accept news/postings dated {cutoff}.\n\n"
+        f"Accepted date range: {cutoff_display} (reject anything older — set relevant=false).\n\n"
         f"Return JSON:\n"
         f'{{"relevant": true/false, '
         f'"company": {{"name": "...", "funding_stage": "...|null", "funding_amount": "...|null", "funding_date": "YYYY-MM|null"}} | null, '
         f'"job": {{"title": "...", "url": "{result.url}", "location": "...|null", "posted_at": "YYYY-MM-DD|null", "raw_text": "...|null"}} | null}}\n\n'
-        f"Set relevant=false if: not a startup, news/posting older than 3 months, or skills don't match."
+        f"Set relevant=false if: not a startup, dated before {cutoff_date or f'last {funding_lookback_days} days'}, or skills don't match."
     )
     return system, user
 
