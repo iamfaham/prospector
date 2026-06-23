@@ -5,19 +5,19 @@ role_variants:
     resume: resumes/resume.pdf
     resume_latex: resumes/resume.tex
     keywords: [AI, LLM, machine learning, python, RAG, agents, fine-tuning]
-    seniority: mid-senior
+    seniority: new grad to mid
 
   - name: software-engineer
     resume: resumes/resume.pdf
     resume_latex: resumes/resume.tex
     keywords: [python, backend, distributed systems, APIs, go, cloud]
-    seniority: mid-senior
+    seniority: new grad to mid
 
   - name: forward-deployed-engineer
     resume: resumes/resume.pdf
     resume_latex: resumes/resume.tex
     keywords: [forward deployed, solutions engineering, python, customer-facing, integrations, LLM]
-    seniority: mid-senior
+    seniority: new grad to mid
 
 sourcing:
   max_queries_per_role_per_run: 8
