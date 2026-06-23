@@ -24,6 +24,7 @@ class MatchingConfig(BaseModel):
 class LLMConfig(BaseModel):
     provider: str = "openrouter"
     model: str = "anthropic/claude-sonnet-4-5"
+    max_calls: int = 1000
 
 
 class PeopleSearchConfig(BaseModel):

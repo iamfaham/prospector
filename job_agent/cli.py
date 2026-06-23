@@ -46,7 +46,7 @@ def _build(config_path: str):
         raise typer.Exit(1)
 
     store = Store()
-    llm = LLMClient(api_key=api_key, model=cfg.llm.model)
+    llm = LLMClient(api_key=api_key, model=cfg.llm.model, max_total_calls=cfg.llm.max_calls)
 
     connectors = []
     tavily_key = os.environ.get("TAVILY_API_KEY", "")

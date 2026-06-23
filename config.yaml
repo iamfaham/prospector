@@ -29,6 +29,7 @@ matching:
 llm:
   provider: openrouter
   model: deepseek/deepseek-v4-flash
+  max_calls: 1000
 
 people_search:
   paid_api: null
