@@ -173,8 +173,9 @@ def resume_tailor_latex_prompt(
         "3. Keep the document class, preamble, page geometry, font sizes, and margins identical.\n"
         "4. Do NOT change the candidate's name, contact details, company names, job titles, "
         "dates, or degree information.\n"
-        "5. Subtly reorder bullet points within each role and reword them to surface skills "
-        "most relevant to this opportunity.\n"
+        "5. Do NOT reorder sections, experiences, or roles — every job must stay in exactly "
+        "the same position as in the original. Only reword or reorder bullet points WITHIN "
+        "a single role.\n"
         "6. You may tighten bullet point wording to save space — shorter is fine.\n"
         "7. Never fabricate experience, skills, or credentials the candidate does not have.\n"
         "8. Do NOT keyword-stuff — natural fit only."
@@ -270,7 +271,9 @@ def resume_tailor_prompt(
         "Return ONLY valid markdown with exactly two sections: "
         "'## Key Changes' (bullet list of what you changed and why) and "
         "'## Tailored Resume' (the full tailored resume text, ready to copy-paste). "
-        "Never invent experience the candidate does not have."
+        "STRICT RULES: never invent experience the candidate does not have. "
+        "Never reorder sections, jobs, or roles — every experience must remain in exactly "
+        "the same order as the original. Only reword or reorder bullet points within a single role."
     )
     user = (
         f"Tailor this resume for a role at {company_name}.\n\n"
