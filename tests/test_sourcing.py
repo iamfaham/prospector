@@ -109,3 +109,41 @@ def test_sourcing_skips_irrelevant_results(tmp_path):
     counts = run_sourcing(role_variant=RV, role_variant_id=rv_id,
                           connectors=[connector], llm=llm, store=store, config=CFG)
     assert counts["companies"] == 0
+
+
+def test_since_date_overrides_cutoff(tmp_path):
+    """When since_date is given, prompts receive it as cutoff_date instead of lookback calc."""
+    from prospector.stages.sourcing import run_sourcing
+    from prospector.config import RoleVariantConfig, SourcingConfig
+    from prospector.store import Store
+    from unittest.mock import MagicMock, patch
+
+    store = Store(db_path=str(tmp_path / "test.db"))
+    llm = MagicMock()
+    llm.is_over_budget.return_value = False
+    llm.call.return_value = "test query"
+    llm.call_json.return_value = {"relevant": False}
+
+    rv = RoleVariantConfig(name="ai-eng", resume="r.pdf", keywords=["AI"], seniority="mid")
+    connector = MagicMock()
+    connector.connector_type = "funding_news"
+    connector.search.return_value = []
+    config = SourcingConfig(max_queries_per_role_per_run=1, funding_lookback_days=30)
+
+    captured = {}
+    original_query_prompt = __import__(
+        "prospector.llm.prompts", fromlist=["sourcing_query_prompt"]
+    ).sourcing_query_prompt
+
+    def spy_query_prompt(*args, **kwargs):
+        captured["cutoff_date"] = kwargs.get("cutoff_date") or args[5]
+        return original_query_prompt(*args, **kwargs)
+
+    with patch("prospector.stages.sourcing.sourcing_query_prompt", spy_query_prompt):
+        run_sourcing(
+            role_variant=rv, role_variant_id=1, connectors=[connector],
+            llm=llm, store=store, config=config,
+            today="2026-06-23", since_date="2026-06-10",
+        )
+
+    assert captured["cutoff_date"] == "2026-06-10"

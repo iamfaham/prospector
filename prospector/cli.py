@@ -69,10 +69,18 @@ def _build(config_path: str):
 @app.command()
 def source(
     config: str = typer.Option("config.yaml", help="Path to config.yaml"),
+    since: Optional[str] = typer.Option(
+        None, help="Only source companies funded since YYYY-MM-DD. Defaults to last run date."
+    ),
 ) -> None:
     """Source startups, score matches, then review interactively."""
     cfg, store, llm, connectors = _build(config)
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+    # Auto-default since_date to last run date so re-runs don't re-fetch the same window
+    since_date = since or store.get_last_run_date() or ""
+    if since_date:
+        typer.echo(f"[source] sourcing since {since_date} (use --since to override)")
 
     rv_map: dict[int, object] = {}
     latex_sources: dict[int, Optional[str]] = {}
@@ -102,7 +110,7 @@ def source(
         c = run_sourcing(
             role_variant=rv_cfg, role_variant_id=rv_id,
             connectors=connectors, llm=llm, store=store, config=cfg.sourcing,
-            today=today,
+            today=today, since_date=since_date,
         )
         typer.echo(f"  → {c['companies']} companies, {c['jobs']} jobs, {c['errors']} errors")
 
@@ -124,6 +132,8 @@ def source(
         candidate_name=cfg.candidate_name,
         output_dir="reports",
     )
+
+    store.log_run()
 
 
 @app.command()

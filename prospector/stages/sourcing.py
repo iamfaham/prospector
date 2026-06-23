@@ -19,13 +19,18 @@ def run_sourcing(
     store: Store,
     config: SourcingConfig,
     today: str = "",
+    since_date: str = "",
 ) -> dict[str, int]:
     """Agentic sourcing loop. Returns {"companies": N, "jobs": N, "errors": N}."""
     counts = {"companies": 0, "jobs": 0, "errors": 0}
     found_names: list[str] = []
-    cutoff_date = (
-        datetime.now(timezone.utc) - timedelta(days=config.funding_lookback_days)
-    ).strftime("%Y-%m-%d")
+
+    if since_date:
+        cutoff_date = since_date
+    else:
+        cutoff_date = (
+            datetime.now(timezone.utc) - timedelta(days=config.funding_lookback_days)
+        ).strftime("%Y-%m-%d")
 
     for connector in connectors:
         ctype = connector.connector_type
