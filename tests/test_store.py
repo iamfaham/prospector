@@ -153,3 +153,18 @@ def test_log_run_and_get_last_run_date(store):
     # After second run, still returns a date (most recent)
     store.log_run()
     assert store.get_last_run_date() is not None
+
+
+def test_get_unscored_companies_skip_high_score(store):
+    """Company already scored >= threshold by another variant is excluded."""
+    rv1 = store.upsert_role_variant(RoleVariant(name="ai-eng", resume_path="r.pdf", keywords=[], seniority="mid"))
+    rv2 = store.upsert_role_variant(RoleVariant(name="swe", resume_path="r.pdf", keywords=[], seniority="mid"))
+    cid = store.upsert_company(Company(name="Acme", source_url="https://acme.com"))
+
+    # Company scored 9/10 for rv1 — should be skipped for rv2 when threshold=7
+    store.insert_match(Match(role_variant_id=rv1, company_id=cid, score=9, reasoning="great"))
+
+    # Without skip: company is unscored for rv2
+    assert any(c.id == cid for c in store.get_unscored_companies(rv2))
+    # With skip threshold=7: already scored above threshold — skip it
+    assert all(c.id != cid for c in store.get_unscored_companies(rv2, skip_if_scored_gte=7))

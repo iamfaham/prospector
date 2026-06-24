@@ -197,17 +197,27 @@ class Store:
             )
             return cursor.lastrowid
 
-    def get_unscored_companies(self, role_variant_id: int) -> list[Company]:
+    def get_unscored_companies(self, role_variant_id: int, skip_if_scored_gte: Optional[int] = None) -> list[Company]:
         with self._conn() as conn:
+            skip_clause = ""
+            params: list = [role_variant_id]
+            if skip_if_scored_gte is not None:
+                skip_clause = """
+                    AND NOT EXISTS (
+                        SELECT 1 FROM matches m2
+                        WHERE m2.company_id = c.id AND m2.score >= ?
+                    )
+                """
+                params.append(skip_if_scored_gte)
             rows = conn.execute(
-                """SELECT c.* FROM companies c
+                f"""SELECT c.* FROM companies c
                    WHERE NOT EXISTS (
                      SELECT 1 FROM matches m
                      WHERE m.company_id = c.id
                        AND m.role_variant_id = ?
                        AND m.job_id IS NULL
-                   )""",
-                (role_variant_id,),
+                   ) {skip_clause}""",
+                params,
             ).fetchall()
             return [_to_company(r) for r in rows]
 

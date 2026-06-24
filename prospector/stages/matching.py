@@ -39,7 +39,9 @@ def run_matching(
     counts = {"scored": 0, "errors": 0}
     lock = threading.Lock()
 
-    companies = store.get_unscored_companies(role_variant_id)
+    companies = store.get_unscored_companies(
+        role_variant_id, skip_if_scored_gte=config.score_threshold_for_outreach
+    )
     jobs = store.get_unscored_jobs(role_variant_id)
 
     def _score_company(company):
