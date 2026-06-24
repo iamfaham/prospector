@@ -24,6 +24,7 @@ def run_sourcing(
     """Agentic sourcing loop. Returns {"companies": N, "jobs": N, "errors": N}."""
     counts = {"companies": 0, "jobs": 0, "errors": 0}
     found_names: list[str] = []
+    new_this_run = 0
 
     if since_date:
         cutoff_date = since_date
@@ -33,9 +34,14 @@ def run_sourcing(
         ).strftime("%Y-%m-%d")
 
     for connector in connectors:
+        if new_this_run >= config.max_new_per_run:
+            break
         ctype = connector.connector_type
 
         for i in range(config.max_queries_per_role_per_run):
+            if new_this_run >= config.max_new_per_run:
+                logger.info(f"[sourcing] reached {config.max_new_per_run} new companies — stopping")
+                break
             if llm.is_over_budget():
                 logger.warning("[sourcing] LLM budget exhausted")
                 break
@@ -50,7 +56,7 @@ def run_sourcing(
                 results = connector.search(query)
 
                 for result in results:
-                    if llm.is_over_budget():
+                    if new_this_run >= config.max_new_per_run or llm.is_over_budget():
                         break
                     try:
                         sys_e, usr_e = sourcing_extract_prompt(
@@ -63,8 +69,12 @@ def run_sourcing(
 
                         co_data = extracted.get("company")
                         if co_data and co_data.get("name"):
+                            name = co_data["name"]
+                            is_fresh = not store.is_company_known(
+                                name, within_days=config.company_freshness_days
+                            )
                             company = Company(
-                                name=co_data["name"],
+                                name=name,
                                 source_url=result.url,
                                 funding_stage=co_data.get("funding_stage"),
                                 funding_amount=co_data.get("funding_amount"),
@@ -72,9 +82,11 @@ def run_sourcing(
                                 raw_signal_text=result.snippet,
                             )
                             company_id = store.upsert_company(company)
-                            if company.name not in found_names:
-                                found_names.append(company.name)
+                            if name not in found_names:
+                                found_names.append(name)
                                 counts["companies"] += 1
+                                if is_fresh:
+                                    new_this_run += 1
 
                             job_data = extracted.get("job")
                             if job_data and job_data.get("title") and job_data.get("url"):

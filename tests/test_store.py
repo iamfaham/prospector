@@ -155,6 +155,28 @@ def test_log_run_and_get_last_run_date(store):
     assert store.get_last_run_date() is not None
 
 
+def test_is_company_known_fresh(store):
+    store.upsert_company(Company(name="FreshCo", source_url="https://fresh.co"))
+    # Just inserted — should be known within 90 days
+    assert store.is_company_known("FreshCo", within_days=90) is True
+
+
+def test_is_company_known_unknown(store):
+    assert store.is_company_known("NonExistent", within_days=90) is False
+
+
+def test_is_company_known_old_record(store):
+    import sqlite3
+    from datetime import datetime, timedelta, timezone
+    store.upsert_company(Company(name="OldCo", source_url="https://old.co"))
+    # Backdate first_seen_at to 100 days ago
+    old_ts = (datetime.now(timezone.utc) - timedelta(days=100)).isoformat()
+    with sqlite3.connect(store.db_path) as conn:
+        conn.execute("UPDATE companies SET first_seen_at = ? WHERE name = ?", (old_ts, "OldCo"))
+    # Should NOT be known within 90 days
+    assert store.is_company_known("OldCo", within_days=90) is False
+
+
 def test_get_unscored_companies_skip_high_score(store):
     """Company already scored >= threshold by another variant is excluded."""
     rv1 = store.upsert_role_variant(RoleVariant(name="ai-eng", resume_path="r.pdf", keywords=[], seniority="mid"))

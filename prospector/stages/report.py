@@ -39,7 +39,7 @@ def run_report(
             continue
 
         stem = _resume_stem(candidate_name, row.get("company_name", "unknown"),
-                            row.get("job_title"), date_str)
+                            row.get("role_variant_name", ""), row.get("job_title"), date_str)
         files: list[str] = []
 
         is_latex = tailored.lstrip().startswith("\\") or "\\documentclass" in tailored
@@ -212,12 +212,12 @@ def _write_csv(rows: list[dict], path: Path) -> None:
         writer.writerows(rows)
 
 
-def _resume_stem(candidate: str, company: str, job_title: str | None, date: str) -> str:
-    """Build a filename stem: Faham_AcmeCorp_SeniorBackendEngineer_2026-06-17
+def _resume_stem(candidate: str, company: str, role_variant: str, job_title: str | None, date: str) -> str:
+    """Build a filename stem: Faham_AcmeCorp_AiEngineer_SeniorBackendEngineer_2026-06-17
 
     The date is appended verbatim (with its hyphens) so it stays human-readable.
     """
-    parts = [candidate, company]
+    parts = [candidate, company, role_variant]
     if job_title:
         parts.append(job_title)
     slug = "_".join(_title_slug(p) for p in parts)

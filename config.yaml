@@ -1,27 +1,66 @@
-candidate_name: Faham   # used in output filenames: Faham_AcmeCorp_AIEngineer_2026-06-23.pdf
+candidate_name: Faham # used in output filenames: Faham_AcmeCorp_AIEngineer_2026-06-23.pdf
 
 role_variants:
   - name: ai-engineer
     resume: resumes/resume.pdf
     resume_latex: resumes/resume.tex
-    keywords: [AI, LLM, machine learning, python, RAG, agents, fine-tuning]
+    keywords:
+      [
+        AI,
+        LLM,
+        machine learning,
+        python,
+        RAG,
+        agents,
+        fine-tuning,
+        prompt engineering,
+        vector databases,
+        embeddings,
+      ]
     seniority: new grad to mid
 
   - name: software-engineer
     resume: resumes/resume.pdf
     resume_latex: resumes/resume.tex
-    keywords: [python, backend, distributed systems, APIs, go, cloud]
+    keywords:
+      [
+        python,
+        backend,
+        APIs,
+        cloud,
+        REST,
+        microservices,
+        TypeScript,
+        React,
+        Node.js,
+        JavaScript,
+        SQL,
+        Postgres,
+        MongoDB,
+      ]
     seniority: new grad to mid
 
   - name: forward-deployed-engineer
     resume: resumes/resume.pdf
     resume_latex: resumes/resume.tex
-    keywords: [forward deployed, solutions engineering, python, customer-facing, integrations, LLM]
+    keywords:
+      [
+        forward deployed,
+        solutions engineering,
+        python,
+        customer-facing,
+        integrations,
+        LLM,
+        RAG,
+        solutions architecture,
+      ]
     seniority: new grad to mid
 
 sourcing:
   max_queries_per_role_per_run: 8
   funding_lookback_days: 30
+  max_new_per_run: 10
+  company_freshness_days: 90
 
 matching:
   score_threshold_for_outreach: 7

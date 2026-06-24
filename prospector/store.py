@@ -1,7 +1,7 @@
 ﻿import json
 import sqlite3
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Generator, Optional
 
 from prospector.models import (
@@ -121,6 +121,16 @@ class Store:
                 "SELECT id FROM companies WHERE name = ?", (company.name,)
             ).fetchone()
             return row["id"]
+
+    def is_company_known(self, name: str, within_days: int = 90) -> bool:
+        """Returns True if a company with this name was first seen within the last `within_days` days."""
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=within_days)).isoformat()
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT id FROM companies WHERE name = ? AND first_seen_at >= ?",
+                (name, cutoff),
+            ).fetchone()
+        return row is not None
 
     def upsert_job(self, job: Job) -> int:
         with self._conn() as conn:

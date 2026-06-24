@@ -15,6 +15,8 @@ class RoleVariantConfig(BaseModel):
 class SourcingConfig(BaseModel):
     max_queries_per_role_per_run: int = 8
     funding_lookback_days: int = 30
+    max_new_per_run: int = 10         # stop once this many fresh companies added per role per run
+    company_freshness_days: int = 90  # companies seen within this window count as already sourced
 
 
 class MatchingConfig(BaseModel):

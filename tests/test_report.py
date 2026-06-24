@@ -200,19 +200,19 @@ def test_no_llm_accepts_multipage_pdf(tmp_path):
 
 
 def test_resume_stem_naming():
-    stem = _resume_stem("Faham", "Acme Corp", "Senior Backend Engineer", "2026-06-17")
+    stem = _resume_stem("Faham", "Acme Corp", "ai-engineer", "Senior Backend Engineer", "2026-06-17")
     # date is kept verbatim with hyphens; words are CamelCased
-    assert stem == "Faham_AcmeCorp_SeniorBackendEngineer_2026-06-17"
+    assert stem == "Faham_AcmeCorp_AiEngineer_SeniorBackendEngineer_2026-06-17"
 
 
 def test_resume_stem_no_job_title():
-    stem = _resume_stem("Faham", "StealthCo", None, "2026-06-17")
+    stem = _resume_stem("Faham", "StealthCo", "software-engineer", None, "2026-06-17")
     # capitalize() lower-cases the tail: StealthCo → Stealthco
-    assert stem == "Faham_Stealthco_2026-06-17"
+    assert stem == "Faham_Stealthco_SoftwareEngineer_2026-06-17"
 
 
 def test_resume_stem_date_keeps_hyphens():
-    stem = _resume_stem("Alice", "AcmeCorp", None, "2026-06-17")
+    stem = _resume_stem("Alice", "AcmeCorp", "ai-engineer", None, "2026-06-17")
     assert stem.endswith("_2026-06-17")
 
 

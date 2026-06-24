@@ -82,7 +82,7 @@ def run_review(
             if choice == "q":
                 typer.echo("[review] Quitting — remaining matches left as pending.")
                 break
-            elif choice == "a":
+            elif choice in ("a", "A"):
                 store.update_match_status(match["id"], MatchStatus.ACCEPTED)
                 counts["accepted"] += 1
                 rv_cfg = rv_map[match["role_variant_id"]]
@@ -95,6 +95,23 @@ def run_review(
                 )
                 future.add_done_callback(_on_done)
                 typer.echo("  → Tailoring started in background…")
+
+                if choice == "A":
+                    for remaining in pending[i:]:
+                        store.update_match_status(remaining["id"], MatchStatus.ACCEPTED)
+                        counts["accepted"] += 1
+                        rv_cfg_r = rv_map[remaining["role_variant_id"]]
+                        latex_src_r = latex_sources.get(remaining["role_variant_id"])
+                        resume_text_r = resume_texts.get(rv_cfg_r.name, "")
+                        fut = executor.submit(
+                            _tailor_and_compile,
+                            remaining, rv_cfg_r, latex_src_r, resume_text_r,
+                            store.db_path, llm, resumes_dir, candidate_name, date_str,
+                        )
+                        fut.add_done_callback(_on_done)
+                    typer.echo(f"  → Accepted all {len(pending[i:])} remaining matches.")
+                    _write_live_report(store, output_dir, list(tailor_results))
+                    break
             elif choice == "r":
                 store.update_match_status(match["id"], MatchStatus.REJECTED)
                 counts["rejected"] += 1
@@ -137,11 +154,12 @@ def _show_company(match: dict, idx: int, total: int, other_variants: list[dict] 
     signal = (match.get("raw_signal_text") or "")[:200]
     jd = (match.get("job_description") or "")[:300]
 
+    roles_line = " · ".join(
+        [f"{match['role_variant_name']} {match['score']}/10"]
+        + [f"{v['role_variant_name']} {v['score']}/10" for v in (other_variants or [])]
+    )
     typer.echo(f"\n{'─' * 66}")
-    typer.echo(f" {idx} / {total}  │  Score: {match['score']}/10  │  {match['role_variant_name']}")
-    if other_variants:
-        also = ", ".join(f"{v['role_variant_name']} {v['score']}/10" for v in other_variants)
-        typer.echo(f" Also matched : {also}")
+    typer.echo(f" {idx} / {total}  │  {roles_line}")
     typer.echo(f"{'─' * 66}")
     typer.echo(f" Company : {match['company_name']}")
     typer.echo(f" Funding : {funding}")
@@ -159,10 +177,10 @@ def _show_company(match: dict, idx: int, total: int, other_variants: list[dict] 
 
 def _prompt() -> str:
     while True:
-        raw = input("[a]ccept  [r]eject  [s]kip  [q]uit › ").strip().lower()
-        if raw in ("a", "r", "s", "q"):
+        raw = input("[a]ccept  [A]ccept all  [r]eject  [s]kip  [q]uit › ").strip()
+        if raw in ("a", "A", "r", "s", "q"):
             return raw
-        typer.echo("  Please type a, r, s, or q.")
+        typer.echo("  Please type a, A, r, s, or q.")
 
 
 # ── background tailoring ──────────────────────────────────────────────────────
@@ -208,7 +226,7 @@ def _tailor_and_compile(
 
         files: list[str] = []
         if latex_src is not None:
-            stem = _resume_stem(candidate_name, company_name, job_title, date_str)
+            stem = _resume_stem(candidate_name, company_name, rv_cfg.name, job_title, date_str)
             report_dir = resumes_dir.parent
             _, produced = _compile_with_fix(tailored, stem, resumes_dir, report_dir, llm)
             files = produced
