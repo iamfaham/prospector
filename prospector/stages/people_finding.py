@@ -1,5 +1,6 @@
 # prospector/stages/people_finding.py
 import logging
+import os
 from typing import Optional
 from urllib.parse import urlparse
 
@@ -41,8 +42,8 @@ def run_people_finding(
                 llm=llm,
                 company_name=company.name,
                 source_url=company.source_url or "",
-                use_skrapp=config.paid_api == "skrapp" and bool(skrapp_api_key),
-                use_apollo=config.paid_api == "apollo" and bool(apollo_api_key),
+                use_skrapp=bool(skrapp_api_key),
+                use_apollo=bool(apollo_api_key),
                 skrapp_api_key=skrapp_api_key or "",
                 apollo_api_key=apollo_api_key or "",
             )
@@ -161,7 +162,6 @@ def _find_via_apollo(company_name: str, api_key: str) -> Optional[Contact]:
 
 
 def _find_via_web_search(llm: LLMClient, company_name: str) -> Optional[Contact]:
-    import os
     tavily_key = os.getenv("TAVILY_API_KEY", "")
     if not tavily_key:
         logger.warning("[people_finding] TAVILY_API_KEY not set, skipping web search")
