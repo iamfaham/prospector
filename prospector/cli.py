@@ -267,9 +267,10 @@ def tailor(
 
     typer.echo("[people-find] …")
     apollo_key: Optional[str] = os.environ.get("APOLLO_API_KEY")
+    skrapp_key: Optional[str] = os.environ.get("SKRAPP_API_KEY")
     c = run_people_finding(
         llm=llm, store=store, config=cfg.people_search,
-        threshold=threshold, apollo_api_key=apollo_key,
+        threshold=threshold, apollo_api_key=apollo_key, skrapp_api_key=skrapp_key,
     )
     typer.echo(f"  → {c['found']} found, {c['not_found']} not found, {c['errors']} errors")
 
@@ -296,10 +297,11 @@ def report(
 
     typer.echo("[people-find] …")
     apollo_key: Optional[str] = os.environ.get("APOLLO_API_KEY")
+    skrapp_key: Optional[str] = os.environ.get("SKRAPP_API_KEY")
     c = run_people_finding(
         llm=llm, store=store, config=cfg.people_search,
         threshold=cfg.matching.score_threshold_for_outreach,
-        apollo_api_key=apollo_key,
+        apollo_api_key=apollo_key, skrapp_api_key=skrapp_key,
     )
     typer.echo(f"  → {c['found']} found, {c['not_found']} not found, {c['errors']} errors")
 
