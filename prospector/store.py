@@ -232,23 +232,45 @@ class Store:
             )
 
     def get_matches_for_review(self, threshold: int) -> list[dict]:
-        """Pending (new) matches above threshold with full company/job info for display."""
+        """Pending (new) matches above threshold — one per company (highest scoring variant)."""
         with self._conn() as conn:
             rows = conn.execute("""
-                SELECT
-                    m.id, m.score, m.reasoning, m.role_variant_id,
-                    c.name AS company_name, c.source_url,
-                    c.funding_stage, c.funding_amount, c.funding_date,
-                    c.raw_signal_text,
-                    j.title AS job_title, j.url AS job_url, j.raw_text AS job_description,
-                    rv.name AS role_variant_name
-                FROM matches m
-                JOIN companies c ON c.id = m.company_id
-                JOIN role_variants rv ON rv.id = m.role_variant_id
-                LEFT JOIN jobs j ON j.id = m.job_id
-                WHERE m.score >= ? AND m.status = 'new'
-                ORDER BY c.funding_date DESC NULLS LAST, m.score DESC
+                SELECT id, score, reasoning, role_variant_id, company_id,
+                       company_name, source_url, funding_stage, funding_amount, funding_date,
+                       raw_signal_text, job_title, job_url, job_description, role_variant_name
+                FROM (
+                    SELECT
+                        m.id, m.score, m.reasoning, m.role_variant_id,
+                        m.company_id,
+                        c.name AS company_name, c.source_url,
+                        c.funding_stage, c.funding_amount, c.funding_date,
+                        c.raw_signal_text,
+                        j.title AS job_title, j.url AS job_url, j.raw_text AS job_description,
+                        rv.name AS role_variant_name,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY m.company_id ORDER BY m.score DESC
+                        ) AS rn
+                    FROM matches m
+                    JOIN companies c ON c.id = m.company_id
+                    JOIN role_variants rv ON rv.id = m.role_variant_id
+                    LEFT JOIN jobs j ON j.id = m.job_id
+                    WHERE m.score >= ? AND m.status = 'new'
+                )
+                WHERE rn = 1
+                ORDER BY funding_date DESC NULLS LAST, score DESC
             """, (threshold,)).fetchall()
+            return [dict(r) for r in rows]
+
+    def get_other_variant_scores(self, company_id: int, exclude_match_id: int) -> list[dict]:
+        """Other role variant scores for the same company — for display in review card."""
+        with self._conn() as conn:
+            rows = conn.execute("""
+                SELECT rv.name AS role_variant_name, m.score
+                FROM matches m
+                JOIN role_variants rv ON rv.id = m.role_variant_id
+                WHERE m.company_id = ? AND m.id != ? AND m.status = 'new'
+                ORDER BY m.score DESC
+            """, (company_id, exclude_match_id)).fetchall()
             return [dict(r) for r in rows]
 
     def get_accepted_matches_needing_draft(self, threshold: int) -> list[dict]:

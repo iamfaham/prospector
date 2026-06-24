@@ -75,7 +75,8 @@ def run_review(
 
     try:
         for i, match in enumerate(pending, 1):
-            _show_company(match, i, total)
+            other_variants = store.get_other_variant_scores(match["company_id"], exclude_match_id=match["id"])
+            _show_company(match, i, total, other_variants=other_variants)
             choice = _prompt()
 
             if choice == "q":
@@ -124,7 +125,7 @@ def run_review(
 
 # ── display helpers ───────────────────────────────────────────────────────────
 
-def _show_company(match: dict, idx: int, total: int) -> None:
+def _show_company(match: dict, idx: int, total: int, other_variants: list[dict] | None = None) -> None:
     funding_parts = [
         match.get("funding_stage"),
         match.get("funding_amount"),
@@ -138,6 +139,9 @@ def _show_company(match: dict, idx: int, total: int) -> None:
 
     typer.echo(f"\n{'─' * 66}")
     typer.echo(f" {idx} / {total}  │  Score: {match['score']}/10  │  {match['role_variant_name']}")
+    if other_variants:
+        also = ", ".join(f"{v['role_variant_name']} {v['score']}/10" for v in other_variants)
+        typer.echo(f" Also matched : {also}")
     typer.echo(f"{'─' * 66}")
     typer.echo(f" Company : {match['company_name']}")
     typer.echo(f" Funding : {funding}")

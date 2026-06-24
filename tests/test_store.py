@@ -115,6 +115,33 @@ def test_get_contact_for_company(store):
     assert c is not None and c.name == "Alice"
 
 
+def test_get_matches_for_review_dedup(store):
+    """Same company matched by two variants — only the higher-scoring one appears in review."""
+    cid = store.upsert_company(Company(name="Acme", source_url="https://acme.com"))
+    rv1 = store.upsert_role_variant(RoleVariant(name="ai-eng", resume_path="r.pdf", keywords=[], seniority="mid"))
+    rv2 = store.upsert_role_variant(RoleVariant(name="swe", resume_path="r.pdf", keywords=[], seniority="mid"))
+    store.insert_match(Match(role_variant_id=rv1, company_id=cid, score=9, reasoning="great"))
+    store.insert_match(Match(role_variant_id=rv2, company_id=cid, score=7, reasoning="ok"))
+
+    pending = store.get_matches_for_review(7)
+    assert len(pending) == 1
+    assert pending[0]["score"] == 9  # highest variant wins
+    assert pending[0]["role_variant_name"] == "ai-eng"
+
+
+def test_get_other_variant_scores(store):
+    cid = store.upsert_company(Company(name="Acme", source_url="https://acme.com"))
+    rv1 = store.upsert_role_variant(RoleVariant(name="ai-eng", resume_path="r.pdf", keywords=[], seniority="mid"))
+    rv2 = store.upsert_role_variant(RoleVariant(name="swe", resume_path="r.pdf", keywords=[], seniority="mid"))
+    mid1 = store.insert_match(Match(role_variant_id=rv1, company_id=cid, score=9, reasoning="great"))
+    store.insert_match(Match(role_variant_id=rv2, company_id=cid, score=7, reasoning="ok"))
+
+    others = store.get_other_variant_scores(cid, exclude_match_id=mid1)
+    assert len(others) == 1
+    assert others[0]["role_variant_name"] == "swe"
+    assert others[0]["score"] == 7
+
+
 def test_log_run_and_get_last_run_date(store):
     # No runs yet
     assert store.get_last_run_date() is None
